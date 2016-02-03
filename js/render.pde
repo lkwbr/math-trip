@@ -51,7 +51,7 @@ var SPACESHIP_THRUST = 500; // Newtons
 // Universe
 var NUM_PLANETS = 5;
 var NUM_ASTEROIDS = 5;
-var NUM_STARS = 1;
+var NUM_STARS = 0;
 var CHAOS_LEVEL = 0.1;
 
 /*
@@ -579,164 +579,6 @@ function Planet(x, y, r, velX, velY, density, aColor) {
         };
 }
 
-// Button base object
-function Button(label, aColor, r, x, y, pressAction) {
-      this.label = label;
-      this.color = aColor;
-      this.r = r;
-      this.x = x;
-      this.y = y;
-      this.borderR = 20;
-
-      // Perform some action
-      this.pressed = function() {
-            pressAction();
-      }
-
-      // Display the button
-      this.display = function() {
-            fill(this.color);
-            noStroke();
-            rect(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, this.borderR, this.borderR, this.borderR, this.borderR);
-      }
-}
-
-/*
-      _________________________________
- | | *        *               *| |
- | |   o               *       | |
- | |     **         *          | |
- | |  *      [Universe]    **  | |
- | |     ~  *           ****   | |
- | |  *             O    **    | |
-      _________________________________
- | 21:16:34   | Space Console    |
- | 01.01.2016 | Distance/Speed/. |
-      _________________________________
- */
-function Console(simulation) {
-
-        this.W = CANVAS_WIDTH;
-        this.H = CANVAS_HEIGHT;
-
-        this.controls = [];
-        this.simulation = simulation;
-        this.gridCols = 10;
-        this.gridRows = 10;
-        this.buttonR = 20;
-
-        // TODO Finish UI controls
-
-        // Add controls
-        this.controls.push(new Button("GravityDisplay", color(90, 20, 0), this.buttonR,
-            this.W - (2 * this.buttonR + 10), (2 * this.buttonR + 10),
-            function() {
-                  // Toggle gravity display mode
-                  gravityDisplayMode = !gravityDisplayMode;
-        }));
-       this.controls.push(new Button("ChartDisplay", color(0, 90, 20), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (4 * this.buttonR + 20),
-           function() {
-                 chartMode = !chartMode;
-       }));
-       this.controls.push(new Button("VelocityDisplay", color(20, 0, 90), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (6 * this.buttonR + 30),
-           function() {
-                 chartMode = !chartMode;
-       }));
-       this.controls.push(new Button("AddPlanet", color(10, 100, 90), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (8 * this.buttonR + 40),
-           function() {
-                 this.simulation.addPlanet();
-       }));
-
-      this.clicked = function(x, y) {
-            // Check if a button has been clicked
-                  // If so, use that button's .pressed()
-      }
-
-        // Spaceship info
-        this.showStats = function() {
-                var stats = this.simulation.getStats();
-                var fontHeight = 30;
-                var fontWidth = fontHeight / 2; // NOTE Estimate
-                var cushionWidth = 20;
-
-                textSize(fontHeight);
-                fill(255, 255, 255);
-
-                for (var i = 0; i < stats.length; i++) {
-                        var txt = stats[i];
-                        text(txt, this.W - (txt.length * fontWidth) - cushionWidth,
-                             this.H - ((stats.length - i) * fontHeight));
-                }
-        }
-
-        this.drawGrid = function() {
-                var horSpacing = this.W / this.gridCols;
-                var vertSpacing = this.H / this.gridRows;
-                var subHorSpacing = horSpacing / this.gridCols;
-                var subVertSpacing = vertSpacing / this.gridRows;
-
-                // Line label
-                fill(LABEL_COLOR);
-                // Grid lines
-                stroke(GRID_COLOR);
-
-                // Draw columnsrowY
-                for (var i = 0; i < this.gridCols; i++) {
-                        var colX = horSpacing * i;
-                        // Column label
-                        text(colX, colX + (horSpacing * 0.2), 20);
-                        // Column line
-                        strokeWeight(4);
-                        line(colX, 0, colX, this.H);
-
-                        // Draw subcolumns
-                        for (var j = 0; j < this.gridCols; j++) {
-                                var subColX = colX + (subHorSpacing * j);
-                                strokeWeight(1);
-                                line(subColX, 0, subColX, this.H);
-                        }
-                }
-                // Draw rows
-                for (var i = 0; i < this.gridRows; i++) {
-                        var rowY = vertSpacing * i;
-                        text(rowY, 10, rowY + (vertSpacing * 0.5));
-                        strokeWeight(4);
-                        line(0, rowY, this.W, rowY);
-
-                        // Draw subcolumns
-                        for (var j = 0; j < this.gridRows; j++) {
-                                var subRowY = rowY + (subVertSpacing * j);
-                                strokeWeight(1);
-                                line(0, subRowY, this.W, subRowY);
-                        }
-                }
-        }
-
-        // Clear whole console with dark gray
-        this.clear = function() {
-                fill(BG_COLOR);
-                rect(0, 0, this.W, this.H);
-        }
-        this.display = function() {
-                // Hide past frame
-                this.clear();
-
-                // Grid is under universe
-                //this.drawGrid();
-
-                // Display UI controls
-                for (var i = 0; i < this.controls.length; i++) { this.controls[i].display(); }
-
-                // Run physics frame
-                this.simulation.move();
-                this.simulation.display();
-
-                this.showStats();
-        }
-}
 // -- DUMP --
 // TODO Give Planet object shards[], which stores tiny planets broken off from
 // a collision.
@@ -1263,6 +1105,179 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         }
 }
 
+
+// Button base object
+function Button(label, aColor, r, x, y, pressAction) {
+      this.label = label;
+      this.color = aColor;
+      this.r = r;
+      this.x = x;
+      this.y = y;
+      this.borderR = 20;
+
+      // Perform some action
+      this.pressed = function() {
+            pressAction();
+      }
+
+      // Display the button
+      this.display = function() {
+            fill(this.color);
+            noStroke();
+            rect(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, this.borderR, this.borderR, this.borderR, this.borderR);
+      }
+}
+
+/*
+      _________________________________
+ | | *        *               *| |
+ | |   o               *       | |
+ | |     **         *          | |
+ | |  *      [Universe]    **  | |
+ | |     ~  *           ****   | |
+ | |  *             O    **    | |
+      _________________________________
+ | 21:16:34   | Space Console    |
+ | 01.01.2016 | Distance/Speed/. |
+      _________________________________
+ */
+function Console(simulation) {
+
+        this.W = CANVAS_WIDTH;
+        this.H = CANVAS_HEIGHT;
+
+        this.controls = [];
+        this.simulation = simulation;
+        this.gridCols = 10;
+        this.gridRows = 10;
+        this.buttonR = 20;
+
+        // TODO Finish UI controls
+
+        // Add controls
+        this.controls.push(new Button("GravityDisplay", color(90, 20, 0), this.buttonR,
+            this.W - (2 * this.buttonR + 10), (2 * this.buttonR + 10),
+            function() {
+                  // Toggle gravity display mode
+                  gravityDisplayMode = !gravityDisplayMode;
+        }));
+       this.controls.push(new Button("ChartDisplay", color(0, 90, 20), this.buttonR,
+           this.W - (2 * this.buttonR + 10), (4 * this.buttonR + 20),
+           function() {
+                 chartMode = !chartMode;
+       }));
+       this.controls.push(new Button("VelocityDisplay", color(20, 0, 90), this.buttonR,
+           this.W - (2 * this.buttonR + 10), (6 * this.buttonR + 30),
+           function() {
+                 velocityDragMode = !velocityDragMode;
+       }));
+       this.controls.push(new Button("AddPlanet", color(10, 100, 90), this.buttonR,
+           this.W - (2 * this.buttonR + 10), (8 * this.buttonR + 40),
+           function() {
+                 universe.addPlanet();
+       }));
+
+       // Is point inside object?
+       this.isInside = function(x, y, obj) {
+             if ((x < (obj.x - obj.r)) || (x > (obj.x + obj.r))) { return false; }
+             if ((y < (obj.y - obj.r)) || (y > (obj.y + obj.r))) { return false; }
+             return true;
+       }
+       // Called when user clicks screen
+      this.clicked = function(x, y) {
+                  // NOTE Loop by caching the length of array
+                  for (var i = 0, len = this.controls.length; i < len; i++) {
+                        if (this.isInside(x, y, this.controls[i])) {
+                              this.controls[i].pressed();
+                              return;
+                        }
+                  }
+      }
+
+
+        // Spaceship info
+        this.showStats = function() {
+                var stats = this.simulation.getStats();
+                var fontHeight = 30;
+                var fontWidth = fontHeight / 2; // NOTE Estimate
+                var cushionWidth = 20;
+
+                textSize(fontHeight);
+                fill(255, 255, 255);
+
+                for (var i = 0; i < stats.length; i++) {
+                        var txt = stats[i];
+                        text(txt, this.W - (txt.length * fontWidth) - cushionWidth,
+                             this.H - ((stats.length - i) * fontHeight));
+                }
+        }
+
+        this.drawGrid = function() {
+                var horSpacing = this.W / this.gridCols;
+                var vertSpacing = this.H / this.gridRows;
+                var subHorSpacing = horSpacing / this.gridCols;
+                var subVertSpacing = vertSpacing / this.gridRows;
+
+                // Line label
+                fill(LABEL_COLOR);
+                // Grid lines
+                stroke(GRID_COLOR);
+
+                // Draw columnsrowY
+                for (var i = 0; i < this.gridCols; i++) {
+                        var colX = horSpacing * i;
+                        // Column label
+                        text(colX, colX + (horSpacing * 0.2), 20);
+                        // Column line
+                        strokeWeight(4);
+                        line(colX, 0, colX, this.H);
+
+                        // Draw subcolumns
+                        for (var j = 0; j < this.gridCols; j++) {
+                                var subColX = colX + (subHorSpacing * j);
+                                strokeWeight(1);
+                                line(subColX, 0, subColX, this.H);
+                        }
+                }
+                // Draw rows
+                for (var i = 0; i < this.gridRows; i++) {
+                        var rowY = vertSpacing * i;
+                        text(rowY, 10, rowY + (vertSpacing * 0.5));
+                        strokeWeight(4);
+                        line(0, rowY, this.W, rowY);
+
+                        // Draw subcolumns
+                        for (var j = 0; j < this.gridRows; j++) {
+                                var subRowY = rowY + (subVertSpacing * j);
+                                strokeWeight(1);
+                                line(0, subRowY, this.W, subRowY);
+                        }
+                }
+        }
+
+        // Clear whole console with dark gray
+        this.clear = function() {
+                fill(BG_COLOR);
+                rect(0, 0, this.W, this.H);
+        }
+        this.display = function() {
+                // Hide past frame
+                this.clear();
+
+                // Grid is under universe
+                //this.drawGrid();
+
+                // Display UI controls
+                for (var i = 0; i < this.controls.length; i++) { this.controls[i].display(); }
+
+                // Run physics frame
+                this.simulation.move();
+                this.simulation.display();
+
+                this.showStats();
+        }
+}
+
 /* HANDLE USER CONTROLS */
 $("body").keydown(function(event) {
         var aKey = event["keyCode"];
@@ -1307,8 +1322,7 @@ $("body").keyup(function(event) {
 
 // Add new planet on mouse click
 mouseClicked = function() {
-
-        universe.addPlanet();
+      console.clicked(mouseX, mouseY);
 };
 
 // Get random color!
