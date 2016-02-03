@@ -49,9 +49,9 @@ var SPACESHIP_R = 50;
 var SPACESHIP_THRUST = 500; // Newtons
 
 // Universe
-var NUM_PLANETS = 5;
-var NUM_ASTEROIDS = 5;
-var NUM_STARS = 0;
+var NUM_PLANETS = 20;
+var NUM_ASTEROIDS = 20;
+var NUM_STARS = 1;
 var CHAOS_LEVEL = 0.1;
 
 /*
@@ -143,6 +143,7 @@ var rightKeyDown = false;
 var gravityDisplayMode = false;
 var chartMode = true;
 var velocityDragMode = false;
+var gridMode = false;
 
 // Canvas constructor
 void setup() {
@@ -1176,6 +1177,11 @@ function Console(simulation) {
            function() {
                  universe.addPlanet();
        }));
+       this.controls.push(new Button("DisplayGrid", color(100, 200, 50), this.buttonR,
+           this.W - (2 * this.buttonR + 10), (10 * this.buttonR + 50),
+           function() {
+                 gridMode = !gridMode;
+       }));
 
        // Is point inside object?
        this.isInside = function(x, y, obj) {
@@ -1264,8 +1270,8 @@ function Console(simulation) {
                 // Hide past frame
                 this.clear();
 
-                // Grid is under universe
-                //this.drawGrid();
+                // Display grid
+                if (gridMode == true) { this.drawGrid(); }
 
                 // Display UI controls
                 for (var i = 0; i < this.controls.length; i++) { this.controls[i].display(); }
