@@ -1,4 +1,5 @@
 /* MathTrip, created by Luke Weber on 12/01/2015
+ *
  *    Uses Newtonian physics to render a universe of stars, planets, asteroids, and spaceships.
  *    Attempting to implement self-guided spaceship to start on one planet and
  *    end on a given target planet, given realistic safe landing velocities. Also working towards
@@ -11,7 +12,6 @@
       - Add trance audio
       - Have objects that allow things to move independently
       - Organize and comment code
-      - Upload to GitHub
  */
 
 // Canvas
@@ -40,6 +40,7 @@ var ROCKET_COLOR = color(100, 0, 0);
 var ROCKET_THRUST = 100;
 var ROCKET_POWER = 20;
 var ROCKET_DENSITY = 10;
+var ROCKET_FRAME_SPACE = 10; // frames
 
 // Ship
 var TARGET_RADIUS = 5;
@@ -51,7 +52,7 @@ var SPACESHIP_THRUST = 500; // Newtons
 // Universe
 var NUM_PLANETS = 20;
 var NUM_ASTEROIDS = 20;
-var NUM_STARS = 1;
+var NUM_STARS = 0;
 var CHAOS_LEVEL = 0.1;
 
 /*
@@ -79,7 +80,7 @@ var CHAOS_LEVEL = 0.1;
    var note = 0;
    var octave = 200;
    var scale = aMinor;
- */
+*/
 
 /* Spiral Properties */
 
@@ -268,6 +269,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
         this.isThrustLeft = false;
         this.isThrustRight = false;
         this.missleCount = MISSILE_COUNT;
+        this.missleGap = ROCKET_FRAME_SPACE;
 
         // Magnitude in meters/sec
         this.getVelocity = function() {
@@ -286,6 +288,10 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
         this.fire = function() {
                 // NOTE Create new missle with relative velocity
                 if (this.missleCount <= 0) { return; }
+                // Make sure we aren't shooting too fast
+                if (this.missleGap != 0) { return; }
+
+                this.missleGap = ROCKET_FRAME_SPACE;
 
                 // Travel angle
                 var theta = Math.atan(this.velY/this.velX) + 2 * Math.PI;
@@ -402,6 +408,9 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 // Spaceship next position
                 this.x += this.velX;
                 this.y += this.velY;
+
+                // Update missle fire gap
+                if (this.missleGap > 0) { this.missleGap--; }
         };
         this.canThrust = function() {
                 if (Math.round(this.getFuelPercentage()) == 0) { return false; }
@@ -614,6 +623,8 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
         // Stores our planets, asteroids, spaceships, and stars.
         this.celestials = [];
+        // Just for looks
+        this.backgroundStars = [];
         // Gravitational constant
         this.G = 6.674 * Math.pow(10, -11);
 
@@ -645,6 +656,11 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         this.asteroidRadius = CANVAS_WIDTH/256;
         this.asteroidVelocity = this.catalyze*4;
 
+        // TODO If user clicks planet, set that as target planet
+
+        this.getRandomPlanet = function() {
+
+        };
         this.getSpaceship = function() {
                 return this.celestials[0];
         }
@@ -738,15 +754,40 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                         return 2;
                 }
 
-                // Planet collision
-                var planetsDist = this.getDistance(planetA, planetB);
-                if ((planetsDist - planetA.r - planetB.r) < 0) {
-                        // Give safe space
-                        var angle = this.getAngleBetween(planetA, planetB);
+                // Celestial collision
+                var d = this.getDistance(planetA, planetB);
+                if ((d - planetA.r - planetB.r) < 0) {
+                        // Missile collision
+                        if (planetA instanceof Missile)
+                        {
+                            //console.log("planetA is a missle");
+                            fill(color(100, 50, 20));
+                            ellipse(planetA.x, planetA.y, planetA.r*4, planetA.r*4);
+
+                            return;
+                        }
+
+                        // Angle to push other planet away
+                        //var angle = this.getAngleBetween(planetA, planetB);
+                        var diffX = planetA.x - planetB.x;
+                        var diffY = planetA.y - planetB.y;
+
+                        // Angle with respect to planetA.
+                        var theta = Math.atan(diffY/diffX) + Math.PI;
+                        if (diffX < 0) { theta += Math.PI; }
+                        else if (diffY < 0) { theta += 2 * Math.PI; }
+
+                        fill(color(200, 100, 250));
+                        ellipse(planetB.x + (10 * Math.cos(theta)), planetB.y + (10 * Math.sin(theta)), planetB.r*2, planetB.r*2);
+
+                        var repulsiveForce = (planetB.mass / Math.pow(10, 7));
+                        planetB.velX += repulsiveForce * Math.cos(theta);
+                        planetB.velY += repulsiveForce * Math.sin(theta);
+
                         // According to this angle, push out planetA +5 the planetDist, using trig!
-                        var pushDist = 5;
-                        //planetA.x += pushDist*cos(angle);
-                        //planetA.y += pushDist*sin(angle);
+                        // var pushDist = planetB.r;
+                        // planetB.x += pushDist * cos(theta);
+                        // planetB.y += pushDist * sin(theta);
 
                         // Elastic collision, momentum conserved
                         //planetA.velX = (planetA.velX * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velX) / (planetA.mass + planetB.mass);
@@ -927,9 +968,23 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 this.celestials.push(spaceship);
                 this.updateGreatestMass(spaceship);
         }
+        // Create random background of stars
+        this.generateBackground = function() {
+             // Spawn 10 to 30 stars
+             for (var i = 0; i < (random(20) + 10); i++) {
+                   var randPos = this.getRandomPosition();
+                   var randRad = random(2) + 1;
+                   this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
+             }
+        }
 
         // Render frame in universe
         this.move = function() {
+             // Render background stars
+             for (var i = 0; i < this.backgroundStars.length; i++) {
+                    this.backgroundStars[i].display();
+             }
+
 
                 var spaceship = this.celestials[0];
                 var spaceshipNetAcc = this.getNetAcc(0);
@@ -1018,6 +1073,9 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
             }
 
  */
+                // Mission stuff
+                this.targetPlanet = this.getRandomPlanet();
+
                 // Handle shooting
                 if (spaceKeyDown == true) {
                         spaceship.fire();
@@ -1064,7 +1122,7 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 // float x = bezierPoint(planet.x, 0, otherPlanet.x, 0, t);
                 // float y = bezierPoint(planet.y, 0, otherPlanet.y, 0, t);
                 // ellipse(x, y, 5, 5);
-                // }
+                //
 
                 // Render all celestials
                 for (i = 1; i < this.celestials.length; i++) {
@@ -1092,6 +1150,8 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
         // Add spaceship
         this.addSpaceship();
+        // Generate unique background of stars
+        this.generateBackground();
         // Add stars
         for (var i = 0; i < this.numStars; i++) {
                 this.addStar();
