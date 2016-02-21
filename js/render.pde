@@ -14,6 +14,12 @@
       - Organize and comment code
  */
 
+// Audio effects
+var backgroundMusic = new Audio("/res/audio/gothic_suburbia.mp3");
+var shootSound = new Audio("/res/audio/ping.mp3");
+var fragmentizeSound = new Audio("/res/audio/ping.mp3");
+var thrustSound = new Audio("/res/audio/ping.mp3");
+
 // Canvas
 var CANVAS_WIDTH = window.innerWidth;
 var CANVAS_HEIGHT = window.innerHeight;
@@ -46,11 +52,11 @@ var ROCKET_FRAME_SPACE = 10; // frames
 var TARGET_RADIUS = 5;
 var TARGET_COLOR = color(255, 255, 255);
 var MISSILE_COUNT = 100;
-var SPACESHIP_R = 50;
+var SPACESHIP_R = 10;
 var SPACESHIP_THRUST = 500; // Newtons
 
 // Universe
-var NUM_PLANETS = 20;
+var NUM_PLANETS = 30;
 var NUM_ASTEROIDS = 20;
 var NUM_STARS = 0;
 var CHAOS_LEVEL = 0.1;
@@ -80,7 +86,7 @@ var CHAOS_LEVEL = 0.1;
    var note = 0;
    var octave = 200;
    var scale = aMinor;
-*/
+ */
 
 /* Spiral Properties */
 
@@ -142,7 +148,7 @@ var rightKeyDown = false;
 
 // Mode controls
 var gravityDisplayMode = false;
-var chartMode = true;
+var chartMode = false;
 var velocityDragMode = false;
 var gridMode = false;
 
@@ -158,6 +164,10 @@ void setup() {
         background(color(255, 255, 255));
         size(CANVAS_WIDTH, CANVAS_HEIGHT);
         frameRate(FPS);
+
+        // Play music
+        backgroundMusic.volume = 1.0;
+        backgroundMusic.play();
 }
 
 // Driver function for animations
@@ -168,6 +178,7 @@ void draw() {
 
 // Base class for celestials: Star, Planet, Spaceship, etc.
 function Celestial(x, y, r, velX, velY, density, aColor) {
+        this.name = "Celestial";
         this.x = x;
         this.y = y;
         this.velX = velX;
@@ -211,7 +222,23 @@ function Point(x, y) {
         }
 }
 
+function NullCelestial() {
+      this.name = "";
+      this.x = 0;
+      this.y = 0;
+      this.velX = 0;
+      this.velY = 0;
+      this.r = 0;
+      this.color = 0;
+      this.density = 0;
+      this.volume = 0;
+      this.mass = 0;
+      this.display = function() { };
+      this.move = function(acc) { };
+}
+
 function Missile(x, y, velX, velY) {
+        this.name = "Missle";
         this.x = x;
         this.y = y;
         this.velX = velX;
@@ -247,6 +274,7 @@ function Missile(x, y, velX, velY) {
 
 // Spaceship constructor
 function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
+        this.name = "Spaceship";
         // Awareness of universe
         this.universe = universe;
         // Array containing all of the other celestials
@@ -257,7 +285,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
         this.y = y;
         this.velX = velX;
         this.velY = velY;
-        this.color = SHIP_COLOR;//aColor;
+        this.color = SHIP_COLOR; //aColor;
         this.r = r;
         this.density = density;
         this.volume = (4/3) * Math.PI * Math.pow(this.r, 3);
@@ -284,7 +312,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
         this.getHeadAngle = function() {
 
         }
-        // Shoot shit
+// Shoot shit
         this.fire = function() {
                 // NOTE Create new missle with relative velocity
                 if (this.missleCount <= 0) { return; }
@@ -301,6 +329,9 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 var missile = new Missile(this.x, this.y, this.velX + ROCKET_VELOCITY * Math.cos(theta), this.velY + ROCKET_VELOCITY * Math.sin(theta));
                 this.universe.addCelestial(missile);
                 this.missleCount--;
+
+                // Play sound
+                shootSound.play();
         }
         // Spaceship itself determines how it will move given
         // its surroundings, similar to actual conditions
@@ -395,7 +426,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                         i++;
                 }
         }
-        // Move spaceship
+// Move spaceship
         this.move = function(acc) {
                 // Get acceleration components
                 var accX = acc[0];
@@ -411,29 +442,38 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
 
                 // Update missle fire gap
                 if (this.missleGap > 0) { this.missleGap--; }
+
+                // Play thrust sound
+                if (this.isThrustUp === true || this.isThrustRight === true || this.isThrustDown === true || this.isThrustLeft === true) {
+                      thrustSound.play();
+                }
         };
         this.canThrust = function() {
-                if (Math.round(this.getFuelPercentage()) == 0) { return false; }
+                if (this.getFuelPercentage() <= 0) { return false; }
                 return true;
         }
         this.thrustUp = function() {
                 if (this.canThrust() == false) { return; }
-                this.move([0, -this.thrust/this.mass]);
+                this.velY += -this.thrust / this.mass;
+                //this.move([0, -this.thrust/this.mass]);
                 this.isThrustUp = true;
         }
         this.thrustDown = function() {
                 if (this.canThrust() == false) { return; }
-                this.move([0, this.thrust/this.mass]);
+                this.velY += this.thrust / this.mass;
+                //this.move([0, this.thrust/this.mass]);
                 this.isThrustDown = true;
         }
         this.thrustLeft = function() {
                 if (this.canThrust() == false) { return; }
-                this.move([-this.thrust/this.mass, 0]);
+                this.velX += -this.thrust / this.mass;
+                //this.move([-this.thrust/this.mass, 0]);
                 this.isThrustLeft = true;
         }
         this.thrustRight = function() {
                 if (this.canThrust() == false) { return; }
-                this.move([this.thrust/this.mass, 0]);
+                this.velX += this.thrust / this.mass;
+                //this.move([this.thrust/this.mass, 0]);
                 this.isThrustRight = true;
         }
         // Display spaceship
@@ -503,6 +543,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
 
 // Star constructor
 function Star(x, y, r, velX, velY, density, aColor) {
+        this.name = "Star";
         this.x = x;
         this.y = y;
         this.velX = velX;
@@ -554,6 +595,7 @@ function Star(x, y, r, velX, velY, density, aColor) {
 
 // Planet constuctor
 function Planet(x, y, r, velX, velY, density, aColor) {
+        this.name = "Planet";
         this.x = x;
         this.y = y;
         this.velX = velX;
@@ -620,6 +662,7 @@ function Simulation(argv) {
 //    2) Declare functions
 //    3) Populate universe
 function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All else is randomized
+        this.name = "Universe";
 
         // Stores our planets, asteroids, spaceships, and stars.
         this.celestials = [];
@@ -633,12 +676,12 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         this.numPlanets = numPlanets;
         this.numAsteroids = numAsteroids;
         this.catalyze = catalyze;
-        this.greatestMass = 0; // Sets the force drawing
+        this.greatestMass = 0; // Sets the weighted force web context
 
         // Spaceship stuff
         this.spaceshipColor = color(0, 0, 0);
         this.spaceshipDensity = 1;
-        this.spaceshipRadius = SPACESHIP_R;//CANVAS_WIDTH/56;  // baseline radius for star
+        this.spaceshipRadius = SPACESHIP_R; // baseline radius for star
         this.spaceshipVelocity = this.catalyze*8;
         // Star attributes
         this.starColor = color(255, 255, 0);
@@ -656,8 +699,69 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         this.asteroidRadius = CANVAS_WIDTH/256;
         this.asteroidVelocity = this.catalyze*4;
 
+        this.addCelestial = function(cel) {
+                this.celestials.push(cel);
+        }
+        // For adding asteroids (which have slightly different properties from planets)
+        this.addAsteroid = function() {
+                var pos = this.getRandomPosition();
+                var x = pos[0];
+                var y = pos[1];
+                velX = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
+                velY = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
+                r = random(this.asteroidRadius);
+                // Check if plausible placement
+                if (this.canISpawn(x, y, r) === false) { return; }
+                var planet = new Planet(x, y, r, velX, velY, this.asteroidDensity, this.asteroidColor);
+                this.celestials.push(planet);
+                this.updateGreatestMass(planet);
+        }
+        this.addPlanet = function() {
+                var pos = this.getRandomPosition();
+                var x = pos[0];
+                var y = pos[1];
+                velX = random(this.planetVelocity) - this.planetVelocity / 2;
+                velY = random(this.planetVelocity) - this.planetVelocity / 2;
+                r = random(this.planetRadius);
+                // Check if plausible placement
+                if (this.canISpawn(x, y, r) === false) { return; }
+                var asteroid = new Planet(x, y, r, velX, velY, this.planetDensity, this.planetColor);
+                this.celestials.push(asteroid);
+                this.updateGreatestMass(asteroid);
+        }
+        /* Attempted overload
+        this.addPlanet = function(planet) {
+                this.celestials.push(planet);
+                this.updateGreatestMass(planet);
+        }
+        */
+        this.addStar = function() {
+                var pos = this.getRandomPosition();
+                var x = pos[0];
+                var y = pos[1];
+                velX = random(this.starVelocity) - this.starVelocity / 2;
+                velY = random(this.starVelocity) - this.starVelocity / 2;
+                r = random(this.starRadius);
+                // Check if plausible placement
+                if (this.canISpawn(x, y, r) === false) { return; }
+                var star = new Star(x, y, r, velX, velY, this.starDensity, this.starColor);
+                this.celestials.push(star);
+                this.updateGreatestMass(star);
+        }
+        this.addSpaceship = function() {
+                var pos = this.getRandomPosition();
+                var x = pos[0];
+                var y = pos[1];
+                velX = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
+                velY = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
+                r = this.spaceshipRadius;//random(this.spaceshipRadius);
+                // Check if plausible placement
+                if (this.canISpawn(x, y, r) === false) { return; }
+                var spaceship = new Spaceship(this, x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
+                this.celestials.push(spaceship);
+                this.updateGreatestMass(spaceship);
+        }
         // TODO If user clicks planet, set that as target planet
-
         this.getRandomPlanet = function() {
 
         };
@@ -723,13 +827,18 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
                 return true;
         }
-        // Check if two planets have collided.
-        this.collisionHandler = function(planetA, planetB) {
+        // Check if two planets have collided, returning one of the following:
+        //  0) No collision
+        //  1) Planet collision
+        //  2) Boundary collision
+        //  3) Missile collision
+        //  4) Star collision
+        this.collisionHandler = function(celestialA, celestialB) {
                 // Boundary collision
-                if (((planetA.x + planetA.r) > CANVAS_WIDTH)
-                    || ((planetA.x - planetA.r) < 0)
-                    || ((planetA.y + planetA.r) > CANVAS_HEIGHT)
-                    || ((planetA.y - planetA.r) < 0)) {
+                if (((celestialA.x + celestialA.r) > CANVAS_WIDTH)
+                    || ((celestialA.x - celestialA.r) < 0)
+                    || ((celestialA.y + celestialA.r) > CANVAS_HEIGHT)
+                    || ((celestialA.y - celestialA.r) < 0)) {
                         /*
                            // Component differences
                            var diffX = planetA.x - planetB.x;
@@ -755,34 +864,37 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 }
 
                 // Celestial collision
-                var d = this.getDistance(planetA, planetB);
-                if ((d - planetA.r - planetB.r) < 0) {
+                var d = this.getDistance(celestialA, celestialB);
+                if ((d - celestialA.r - celestialB.r) < 0) {
                         // Missile collision
-                        if (planetA instanceof Missile)
+                        if (celestialA instanceof Missile)
                         {
-                            //console.log("planetA is a missle");
-                            fill(color(100, 50, 20));
-                            ellipse(planetA.x, planetA.y, planetA.r*4, planetA.r*4);
+                                // Missle doesn't affect spaceship itself
+                                if (celestialB instanceof Spaceship) { return 0; }
 
-                            return;
+                                return 3;
                         }
+                        // Star collsion
+                        if (celestialA instanceof Star) { return 4; }
 
                         // Angle to push other planet away
                         //var angle = this.getAngleBetween(planetA, planetB);
-                        var diffX = planetA.x - planetB.x;
-                        var diffY = planetA.y - planetB.y;
+                        var diffX = celestialA.x - celestialB.x;
+                        var diffY = celestialA.y - celestialB.y;
 
                         // Angle with respect to planetA.
                         var theta = Math.atan(diffY/diffX) + Math.PI;
                         if (diffX < 0) { theta += Math.PI; }
                         else if (diffY < 0) { theta += 2 * Math.PI; }
 
+                        // Display push animation
                         fill(color(200, 100, 250));
-                        ellipse(planetB.x + (10 * Math.cos(theta)), planetB.y + (10 * Math.sin(theta)), planetB.r*2, planetB.r*2);
+                        ellipse(celestialB.x + (10 * Math.cos(theta)), celestialB.y + (10 * Math.sin(theta)), celestialB.r*2, celestialB.r*2);
 
-                        var repulsiveForce = (planetB.mass / Math.pow(10, 7));
-                        planetB.velX += repulsiveForce * Math.cos(theta);
-                        planetB.velY += repulsiveForce * Math.sin(theta);
+                        // Push two celestials apart
+                        var repulsiveForce = (celestialB.mass / Math.pow(10, 7));
+                        celestialB.velX += repulsiveForce * Math.cos(theta);
+                        celestialB.velY += repulsiveForce * Math.sin(theta);
 
                         // According to this angle, push out planetA +5 the planetDist, using trig!
                         // var pushDist = planetB.r;
@@ -793,17 +905,59 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                         //planetA.velX = (planetA.velX * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velX) / (planetA.mass + planetB.mass);
                         //planetA.velY = (planetA.velY * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velY) / (planetA.mass + planetB.mass);
 
+                        // Planet collision
                         return 1;
                 }
 
                 // No collision
                 return 0;
         }
+        this.debugLog = function() {
+                for (var i = 0; i < this.celestials.length; i++)
+                {
+                        print(this.celestials[i].name + "\t");
+                }
+                println("\n--------------------------\n");
+
+                return;
+        };
+        // Remove celestial from universe
+        this.destroy = function(celestial) {
+                // Search for celestial to destroy
+                for (var i = 0; i < this.celestials.length; i++)
+                {
+                        if (this.celestials[i] === celestial) {
+                                celestial.color = color(0, 255, 0);
+                                // TODO Fix error with splicing
+                                //this.celestials.splice(i, 1);
+                                // For now, we just nullify the celestial
+                                this.celestials[i] = new NullCelestial();
+
+                                return;
+                        }
+                }
+        };
+        // Turn celestial into lots of small bits
+        this.fragmentize = function(celestial) {
+                celestial.color = color(255, 0, 255);
+                celestial.r /= 2;
+                // Deep copy of celestial
+                var fragmentCelestial = jQuery.extend(true, {}, celestial);
+                fragmentCelestial.x += random(2) + 1;
+                fragmentCelestial.y += random(2) + 1;
+                this.celestials.push(fragmentCelestial);
+                // Store celestial
+                // Remove celestial from universe with .delete()
+                // Add randomized, sprayed fragments to universe
+
+                // Play sound
+                fragmentizeSound.play();
+        };
         // Given two masses, compute the acceleration of the first.
-        this.getPairAcc = function(planet, obj) {
+        this.getPairAcc = function(celestialA, celestialB) {
                 // Distance apart
-                var diffX = planet.x - obj.x;
-                var diffY = planet.y - obj.y;
+                var diffX = celestialA.x - celestialB.x;
+                var diffY = celestialA.y - celestialB.y;
                 var d = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
 
                 // Angle with respect to first param
@@ -812,29 +966,50 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 else if (diffY < 0) { theta += 2 * Math.PI; }
 
                 // Planet acceleration
-                var acc = this.G * obj.mass / Math.pow(d, 2);
+                var acc = this.G * celestialB.mass / Math.pow(d, 2);
                 var accX = acc * Math.cos(theta);
                 var accY = acc * Math.sin(theta);
 
                 // Planet force!
-                var force = acc * planet.mass;
+                var force = acc * celestialA.mass;
 
                 // Get type of collision (including "no colision")
-                var collisionReport = this.collisionHandler(planet, obj);
+                var collisionReport = this.collisionHandler(celestialA, celestialB);
+                if (collisionReport === 1) { // Planet collision
 
-                // Planet collision
-                if (collisionReport === 1) {
-                        // Boundary collision
-                } else if (collisionReport === 2) {
-                        // Explosive collision
-                } else {
+                } else if (collisionReport === 2) { // Boundary collision
+                      // Remove planets not in the canvas scope
+                      if (!(celestialA instanceof Spaceship)) { this.destroy(celestialA); }
+                } else if (collisionReport === 3) { // Explosive collision
+                        // Visual debugging
+                        fill(color(100, 50, 20));
+                        ellipse(celestialA.x, celestialA.y, celestialA.r*4, celestialA.r*4);
+
+                        // Destroy celestialA (missile)
+                        this.destroy(celestialA);
+
+                        // Breakup celestialB (collided planet) into randomized fragments
+                        this.fragmentize(celestialB);
+
+                        // Display explosion animation
+                        fill(color(180, 70, 70));
+                        var explRad = random(100);
+                        ellipse(celestialA.x, celestialA.y, explRad, explRad);
+
+                } else if (collisionReport == 4) { // Star collision
+                        // Destroy celestialB (celestial)
+                        this.destroy(celestialB);
+
+                        // Grow sun... for fun
+                        celestialA.r++;
                 }
 
+                // Display weighted gravity web, if mode is on
                 if (gravityDisplayMode == true) {
                         // Line between weighted with magnitude of force
                         stroke(230, 230, 230);
                         strokeWeight(Math.pow(force, 1/4));
-                        line(planet.x, planet.y, obj.x, obj.y);
+                        line(celestialA.x, celestialA.y, celestialB.x, celestialB.y);
 
                         // Reset stroke
                         stroke(255, 255, 255);
@@ -853,17 +1028,6 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var startPlanet = this.celestials[0];
                 var endPlanet = this.celestials[this.celestials.length - 1];
 
-                //startPlanet.color = color(0, 0, 0);
-                //endPlanet.color = color(0, 0, 0);
-
-                // Draw first bezier point at startPlanet
-                // float x = bezierPoint(planet.x, 0, otherPlanet.x, 0, t);
-                // float y = bezierPoint(planet.y, 0, otherPlanet.y, 0, t);
-                // ellipse(x, y, 5, 5);
-
-                // noFill();
-                // stroke(getRandColor(255));
-
                 // Add planets to net acceleration
                 for (j = 0; j < this.celestials.length; j++) {
                         if (j !== planetIndex) {
@@ -873,118 +1037,31 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                                 netAcc[1] += acc[1];
 
                                 if (otherPlanet !== startPlanet && otherPlanet !== endPlanet) {
-
-                                        // noStroke();
-                                        // stroke(getRandColor(255));
-
-                                        // strokeWeight(1);
-                                        // line(startPlanet.x, startPlanet.y, otherPlanet.x, otherPlanet.y);
-                                        // line(endPlanet.x, endPlanet.y, otherPlanet.x, otherPlanet.y);
-
-                                        // strokeWeight(5);
-                                        // bezier(startPlanet.x, startPlanet.y, Math.sqrt(otherPlanet.x*otherPlanet.mass), Math.sqrt(otherPlanet.y*otherPlanet.mass),
-                                        // Math.sqrt(otherPlanet.x*otherPlanet.mass), Math.sqrt(otherPlanet.y*otherPlanet.mass), endPlanet.x, endPlanet.y);
-                                        //bezierVertex(startPlanet.x, startPlanet.y, Math.sqrt(otherPlanet.mass)/4, endPlanet.x, endPlanet.y, Math.sqrt(otherPlanet.mass)/4);
-
-                                        // strokeWeight(1);
                                 }
-
-/*
-                        noFill();
-                        stroke(255, 102, 0);
-                        line(planet.x, planet.y, otherPlanet.x, otherPlanet.y);
-                        stroke(getRandColor(255));
-
-                        bezier(planet.x, planet.y, otherPlanet.x, otherPlanet.y, otherPlanet.x, otherPlanet.y, 0, 0);
-                        //bezier(planet.x, planet.y, otherPlanet.x, otherPlanet.y, 80);
-                        fill(0);
-                        int steps = 30;
-                        for (int i = 0; i <= steps; i++) {
-                              float t = i / float(steps);
-                              float x = bezierPoint(planet.x, 0, otherPlanet.x, 0, t);
-                              float y = bezierPoint(planet.y, 0, otherPlanet.y, 0, t);
-                              ellipse(x, y, 5, 5);
-                        }
-                        //--
- */
                         }
                 }
 
                 return netAcc;
         }
-        this.addCelestial = function(cel) {
-                this.celestials.push(cel);
-        }
-        // For adding asteroids (which have slightly different properties from planets)
-        this.addAsteroid = function() {
-                var pos = this.getRandomPosition();
-                var x = pos[0];
-                var y = pos[1];
-                velX = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
-                velY = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
-                r = random(this.asteroidRadius);
-                // Check if plausible placement
-                if (this.canISpawn(x, y, r) === false) { return; }
-                var planet = new Planet(x, y, r, velX, velY, this.asteroidDensity, this.asteroidColor);
-                this.celestials.push(planet);
-                this.updateGreatestMass(planet);
-        }
-        this.addPlanet = function() {
-                var pos = this.getRandomPosition();
-                var x = pos[0];
-                var y = pos[1];
-                velX = random(this.planetVelocity) - this.planetVelocity / 2;
-                velY = random(this.planetVelocity) - this.planetVelocity / 2;
-                r = random(this.planetRadius);
-                // Check if plausible placement
-                if (this.canISpawn(x, y, r) === false) { return; }
-                var asteroid = new Planet(x, y, r, velX, velY, this.planetDensity, this.planetColor);
-                this.celestials.push(asteroid);
-                this.updateGreatestMass(asteroid);
-        }
-        this.addStar = function() {
-                var pos = this.getRandomPosition();
-                var x = pos[0];
-                var y = pos[1];
-                velX = random(this.starVelocity) - this.starVelocity / 2;
-                velY = random(this.starVelocity) - this.starVelocity / 2;
-                r = random(this.starRadius);
-                // Check if plausible placement
-                if (this.canISpawn(x, y, r) === false) { return; }
-                var star = new Star(x, y, r, velX, velY, this.starDensity, this.starColor);
-                this.celestials.push(star);
-                this.updateGreatestMass(star);
-        }
-        this.addSpaceship = function() {
-                var pos = this.getRandomPosition();
-                var x = pos[0];
-                var y = pos[1];
-                velX = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-                velY = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-                r = random(this.spaceshipRadius);
-                // Check if plausible placement
-                if (this.canISpawn(x, y, r) === false) { return; }
-                var spaceship = new Spaceship(this, x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
-                this.celestials.push(spaceship);
-                this.updateGreatestMass(spaceship);
-        }
         // Create random background of stars
         this.generateBackground = function() {
-             // Spawn 10 to 30 stars
-             for (var i = 0; i < (random(20) + 10); i++) {
-                   var randPos = this.getRandomPosition();
-                   var randRad = random(2) + 1;
-                   this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
-             }
+                // Spawn 10 to 30 stars
+                for (var i = 0; i < (random(20) + 10); i++) {
+                        var randPos = this.getRandomPosition();
+                        var randRad = random(2) + 1;
+                        this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
+                }
         }
 
         // Render frame in universe
         this.move = function() {
-             // Render background stars
-             for (var i = 0; i < this.backgroundStars.length; i++) {
-                    this.backgroundStars[i].display();
-             }
+                // Render background stars
+                for (var i = 0; i < this.backgroundStars.length; i++) {
+                        this.backgroundStars[i].display();
+                }
 
+                // Log stuff
+                //this.debugLog();
 
                 var spaceship = this.celestials[0];
                 var spaceshipNetAcc = this.getNetAcc(0);
@@ -1169,24 +1246,24 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
 // Button base object
 function Button(label, aColor, r, x, y, pressAction) {
-      this.label = label;
-      this.color = aColor;
-      this.r = r;
-      this.x = x;
-      this.y = y;
-      this.borderR = 20;
+        this.label = label;
+        this.color = aColor;
+        this.r = r;
+        this.x = x;
+        this.y = y;
+        this.borderR = 20;
 
-      // Perform some action
-      this.pressed = function() {
-            pressAction();
-      }
+        // Perform some action
+        this.pressed = function() {
+                pressAction();
+        }
 
-      // Display the button
-      this.display = function() {
-            fill(this.color);
-            noStroke();
-            rect(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, this.borderR, this.borderR, this.borderR, this.borderR);
-      }
+        // Display the button
+        this.display = function() {
+                fill(this.color);
+                noStroke();
+                rect(this.x - this.r, this.y - this.r, this.r * 2, this.r * 2, this.borderR, this.borderR, this.borderR, this.borderR);
+        }
 }
 
 /*
@@ -1217,49 +1294,48 @@ function Console(simulation) {
 
         // Add controls
         this.controls.push(new Button("GravityDisplay", color(90, 20, 0), this.buttonR,
-            this.W - (2 * this.buttonR + 10), (2 * this.buttonR + 10),
-            function() {
-                  // Toggle gravity display mode
-                  gravityDisplayMode = !gravityDisplayMode;
+                                      this.W - (2 * this.buttonR + 10), (2 * this.buttonR + 10),
+                                      function() {
+                // Toggle gravity display mode
+                gravityDisplayMode = !gravityDisplayMode;
         }));
-       this.controls.push(new Button("ChartDisplay", color(0, 90, 20), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (4 * this.buttonR + 20),
-           function() {
-                 chartMode = !chartMode;
-       }));
-       this.controls.push(new Button("VelocityDisplay", color(20, 0, 90), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (6 * this.buttonR + 30),
-           function() {
-                 velocityDragMode = !velocityDragMode;
-       }));
-       this.controls.push(new Button("AddPlanet", color(10, 100, 90), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (8 * this.buttonR + 40),
-           function() {
-                 universe.addPlanet();
-       }));
-       this.controls.push(new Button("DisplayGrid", color(100, 200, 50), this.buttonR,
-           this.W - (2 * this.buttonR + 10), (10 * this.buttonR + 50),
-           function() {
-                 gridMode = !gridMode;
-       }));
+        this.controls.push(new Button("ChartDisplay", color(0, 90, 20), this.buttonR,
+                                      this.W - (2 * this.buttonR + 10), (4 * this.buttonR + 20),
+                                      function() {
+                chartMode = !chartMode;
+        }));
+        this.controls.push(new Button("VelocityDisplay", color(20, 0, 90), this.buttonR,
+                                      this.W - (2 * this.buttonR + 10), (6 * this.buttonR + 30),
+                                      function() {
+                velocityDragMode = !velocityDragMode;
+        }));
+        this.controls.push(new Button("AddPlanet", color(10, 100, 90), this.buttonR,
+                                      this.W - (2 * this.buttonR + 10), (8 * this.buttonR + 40),
+                                      function() {
+                universe.addPlanet();
+        }));
+        this.controls.push(new Button("DisplayGrid", color(100, 200, 50), this.buttonR,
+                                      this.W - (2 * this.buttonR + 10), (10 * this.buttonR + 50),
+                                      function() {
+                gridMode = !gridMode;
+        }));
 
-       // Is point inside object?
-       this.isInside = function(x, y, obj) {
-             if ((x < (obj.x - obj.r)) || (x > (obj.x + obj.r))) { return false; }
-             if ((y < (obj.y - obj.r)) || (y > (obj.y + obj.r))) { return false; }
-             return true;
-       }
-       // Called when user clicks screen
-      this.clicked = function(x, y) {
-                  // NOTE Loop by caching the length of array
-                  for (var i = 0, len = this.controls.length; i < len; i++) {
+        // Is point inside object?
+        this.isInside = function(x, y, obj) {
+                if ((x < (obj.x - obj.r)) || (x > (obj.x + obj.r))) { return false; }
+                if ((y < (obj.y - obj.r)) || (y > (obj.y + obj.r))) { return false; }
+                return true;
+        }
+        // Called when user clicks screen
+        this.clicked = function(x, y) {
+                // NOTE Loop by caching the length of array
+                for (var i = 0, len = this.controls.length; i < len; i++) {
                         if (this.isInside(x, y, this.controls[i])) {
-                              this.controls[i].pressed();
-                              return;
+                                this.controls[i].pressed();
+                                return;
                         }
-                  }
-      }
-
+                }
+        }
 
         // Spaceship info
         this.showStats = function() {
@@ -1360,11 +1436,16 @@ $("body").keydown(function(event) {
         } else if (aKey == 40) {
                 downKeyDown = true;
         } else {
+                // Stop animating
                 noLoop();
+
                 // Show pause
                 textSize(200);
                 fill(255);
                 text("||", 10, 170);
+
+                // Stop music
+                backgroundMusic.pause();
         }
 });
 $("body").keyup(function(event) {
@@ -1381,6 +1462,7 @@ $("body").keyup(function(event) {
                 downKeyDown = false;
         } else {
                 loop();
+                backgroundMusic.play();
         }
 });
 
@@ -1388,7 +1470,7 @@ $("body").keyup(function(event) {
 
 // Add new planet on mouse click
 mouseClicked = function() {
-      console.clicked(mouseX, mouseY);
+        console.clicked(mouseX, mouseY);
 };
 
 // Get random color!
