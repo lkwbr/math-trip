@@ -40,7 +40,7 @@ var TARGET_COLOR = color(133, 40, 40);
 var SHIP_CHART_COLOR = color(2, 48, 73, FADE_LEVEL);
 
 // Missile
-var ROCKET_RADIUS = 5;
+var ROCKET_RADIUS = 2;
 var ROCKET_VELOCITY = 10;
 var ROCKET_COLOR = color(100, 0, 0);
 var ROCKET_THRUST = 100;
@@ -208,6 +208,8 @@ function Celestial(x, y, r, velX, velY, density, aColor) {
                 fill(this.color + 20);
                 ellipse(this.x, this.y, this.r*2/100, this.r*2/100);
         }
+        this.destroy = function() {
+        }
 }
 
 function Point(x, y) {
@@ -223,18 +225,22 @@ function Point(x, y) {
 }
 
 function NullCelestial() {
-      this.name = "";
-      this.x = 0;
-      this.y = 0;
-      this.velX = 0;
-      this.velY = 0;
-      this.r = 0;
-      this.color = 0;
-      this.density = 0;
-      this.volume = 0;
-      this.mass = 0;
-      this.display = function() { };
-      this.move = function(acc) { };
+        this.name = "";
+        this.x = 0;
+        this.y = 0;
+        this.velX = 0;
+        this.velY = 0;
+        this.r = 0;
+        this.color = 0;
+        this.density = 0;
+        this.volume = 0;
+        this.mass = 0;
+        this.display = function() {
+        };
+        this.move = function(acc) {
+        };
+        this.destroy = function() {
+        }
 }
 
 function Missile(x, y, velX, velY) {
@@ -265,11 +271,88 @@ function Missile(x, y, velX, velY) {
                 this.y += this.velY;
         }
         this.display = function() {
+
+                // Travel angle
+                var theta = Math.atan(this.velY/this.velX) + 2 * Math.PI;
+                if (this.velX < 0) { theta += Math.PI; }
+                else if (this.velY < 0) { theta += 2 * Math.PI; }
+                var vel = Math.sqrt(Math.pow(this.velX, 2) + Math.pow(this.velY, 2));
+                theta += Math.PI;
+                // Tail
+                stroke(this.color);
+                strokeWeight(3);
+                line(this.x, this.y, this.x + 15 * Math.cos(theta), this.y + 15 * Math.sin(theta));
+                // Head
                 noStroke();
+                fill(color(100, 200, 200));
+                ellipse(this.x, this.y, this.r, this.r);
+        }
+        this.destroy = function() {
+        }
+}
+
+// Object to be grouped/linked list with other friends
+// Want to have them create random and interesting geometric structures and help you do tasks
+// Each friend moves with respect to the next one
+// TODO Move to being a double-linked list
+function Friend(x, y, r, velX, velY, density, aColor) {
+        this.name = "Friend";
+        // Points to next friend in list
+        this.next = null;
+        this.previous = null;
+        // TODO Decrement this every move, and send a "packet" to next when == 0!
+        this.packetTimer = 100;
+
+        this.x = x;
+        this.y = y;
+        this.velX = velX;
+        this.velY = velY;
+        this.color = color(20, 200, 20);
+        this.r = r;
+        this.density = density;
+        this.volume = (4/3) * Math.PI * Math.pow(this.r, 3);
+        this.mass = this.density * this.volume;
+
+        this.move = function(acc) {
+                // Get acceleration components
+                var accX = acc[0];
+                var accY = acc[1];
+
+                // Follow next friend
+                // TODO Fix the error of this.next being null
+                if (this.next) {
+                     accX += (this.next.x - this.x) / Math.pow(10, 6);
+                     accY += (this.next.y - this.y) / Math.pow(10, 6);
+                }
+
+                // Velocity
+                this.velX += accX;
+                this.velY += accY;
+
+                // Now move
+                this.x += this.velX;
+                this.y += this.velY;
+        }
+        this.display = function() {
+                // Draw line to next, if we can
+                if (this.next) {
+                        stroke(color(255, 255, 255));
+                        strokeWeight(1);
+                        line(this.x, this.y, this.next.x, this.next.y);
+                }
+                // Draw them as squares
+                strokeWeight(3);
                 fill(this.color);
-                ellipse(this.x, this.y, this.r*2, this.r*2);
+                rect(this.x - this.r / 2, this.y - this.r /2, this.r * 2, this.r * 2);
         }
 
+        this.destroy = function() {
+                if (this.previous) { this.previous.next = this.next; }
+                // We are root
+                else {
+
+                }
+        }
 }
 
 // Spaceship constructor
@@ -319,6 +402,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 // Make sure we aren't shooting too fast
                 if (this.missleGap != 0) { return; }
 
+                // Timing between missile fires
                 this.missleGap = ROCKET_FRAME_SPACE;
 
                 // Travel angle
@@ -326,6 +410,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 if (this.velX < 0) { theta += Math.PI; }
                 else if (this.velY < 0) { theta += 2 * Math.PI; }
 
+                // Add missle to universe
                 var missile = new Missile(this.x, this.y, this.velX + ROCKET_VELOCITY * Math.cos(theta), this.velY + ROCKET_VELOCITY * Math.sin(theta));
                 this.universe.addCelestial(missile);
                 this.missleCount--;
@@ -426,7 +511,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                         i++;
                 }
         }
-// Move spaceship
+        // Move spaceship
         this.move = function(acc) {
                 // Get acceleration components
                 var accX = acc[0];
@@ -445,7 +530,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
 
                 // Play thrust sound
                 if (this.isThrustUp === true || this.isThrustRight === true || this.isThrustDown === true || this.isThrustLeft === true) {
-                      thrustSound.play();
+                        thrustSound.play();
                 }
         };
         this.canThrust = function() {
@@ -539,6 +624,9 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 this.isThrustLeft = false;
                 this.isThrustRight = false;
         };
+
+        this.destroy = function() {
+        }
 }
 
 // Star constructor
@@ -591,6 +679,9 @@ function Star(x, y, r, velX, velY, density, aColor) {
                 fill(this.color);
                 ellipse(this.x, this.y, r*2, r*2);
         };
+
+        this.destroy = function() {
+        }
 }
 
 // Planet constuctor
@@ -629,6 +720,10 @@ function Planet(x, y, r, velX, velY, density, aColor) {
                 fill(this.color + 20);
                 ellipse(this.x, this.y, this.r*2/100, this.r*2/100);
         };
+
+        this.destroy = function() {
+
+        }
 }
 
 // -- DUMP --
@@ -699,6 +794,9 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         this.asteroidRadius = CANVAS_WIDTH/256;
         this.asteroidVelocity = this.catalyze*4;
 
+        // Friend stuff
+        this.rootFriend = null;
+
         this.addCelestial = function(cel) {
                 this.celestials.push(cel);
         }
@@ -730,11 +828,11 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 this.updateGreatestMass(asteroid);
         }
         /* Attempted overload
-        this.addPlanet = function(planet) {
+           this.addPlanet = function(planet) {
                 this.celestials.push(planet);
                 this.updateGreatestMass(planet);
-        }
-        */
+           }
+         */
         this.addStar = function() {
                 var pos = this.getRandomPosition();
                 var x = pos[0];
@@ -761,6 +859,36 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 this.celestials.push(spaceship);
                 this.updateGreatestMass(spaceship);
         }
+        // NOTE Basing it off of spaceship for now
+        this.addFriend = function() {
+                var pos = this.getRandomPosition();
+                var x = pos[0];
+                var y = pos[1];
+                velX = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
+                velY = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
+                r = this.spaceshipRadius;
+                // Check if plausible placement
+                if (this.canISpawn(x, y, r) === false) { return; }
+
+                var newFriend = new Friend(x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
+                // Root case
+                if (!this.rootFriend) { this.rootFriend = newFriend; }
+                // Make sure linked list is maintained
+                else {
+                        var tempFriend = this.rootFriend;
+                        // Get last friend in list
+                        while (tempFriend.next) {
+                                tempFriend = tempFriend.next;
+                        }
+                        // Add new friend to end of list
+                        tempFriend.next = newFriend;
+                        // Linkup new friend with previous friend
+                        newFriend.previous = tempFriend;
+                }
+                // Add friend to universe now
+                this.celestials.push(newFriend);
+                this.updateGreatestMass(newFriend);
+        }
         // TODO If user clicks planet, set that as target planet
         this.getRandomPlanet = function() {
 
@@ -773,6 +901,7 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var stats = [];
                 var ss = this.getSpaceship();
 
+                stats.push(this.celestials.length + " celestials");
                 stats.push(ss.getMissleCount() + " missles");
                 stats.push(Math.round(ss.getFuelPercentage() * 100) + "% fuel");
                 stats.push(ss.getVelocity() + " m/s");
@@ -923,6 +1052,8 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         };
         // Remove celestial from universe
         this.destroy = function(celestial) {
+                // Don't destroy spaceship or star
+                if (celestial instanceof Spaceship || celestial instanceof Star) { return; }
                 // Search for celestial to destroy
                 for (var i = 0; i < this.celestials.length; i++)
                 {
@@ -930,6 +1061,8 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                                 celestial.color = color(0, 255, 0);
                                 // TODO Fix error with splicing
                                 //this.celestials.splice(i, 1);
+                                // Have celestial handle destruction cleanup
+                                this.celestials[i].destroy();
                                 // For now, we just nullify the celestial
                                 this.celestials[i] = new NullCelestial();
 
@@ -939,16 +1072,30 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         };
         // Turn celestial into lots of small bits
         this.fragmentize = function(celestial) {
-                celestial.color = color(255, 0, 255);
-                celestial.r /= 2;
-                // Deep copy of celestial
-                var fragmentCelestial = jQuery.extend(true, {}, celestial);
-                fragmentCelestial.x += random(2) + 1;
-                fragmentCelestial.y += random(2) + 1;
-                this.celestials.push(fragmentCelestial);
-                // Store celestial
-                // Remove celestial from universe with .delete()
-                // Add randomized, sprayed fragments to universe
+                // Destroy really small celestials
+                if (celestial.r < 5) { this.destroy(celestial); return; }
+
+                var numFrags = random(5) + 2;
+
+                // Cleanup celestial
+                //celestial.destroy();
+
+                // Copy celestial
+                var celestialModel = jQuery.extend(true, {}, celestial);
+                celestialModel.color = color(255, 0, 255);
+
+                // Destroy original celestial
+                this.destroy(celestial);
+
+                // Generate fragments
+                for (var i = 0; i < numFrags; i++) {
+                        // Deep copy of celestial
+                        var fragmentCelestial = jQuery.extend(true, {}, celestialModel);
+                        fragmentCelestial.r = celestialModel.r / numFrags;
+                        fragmentCelestial.x += random(2) + 1;
+                        fragmentCelestial.y += random(2) + 1;
+                        this.celestials.push(fragmentCelestial);
+                }
 
                 // Play sound
                 fragmentizeSound.play();
@@ -978,8 +1125,46 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 if (collisionReport === 1) { // Planet collision
 
                 } else if (collisionReport === 2) { // Boundary collision
-                      // Remove planets not in the canvas scope
-                      if (!(celestialA instanceof Spaceship)) { this.destroy(celestialA); }
+                        // Remove planets not in the canvas scope
+                        if (!(celestialA instanceof Spaceship)) { this.destroy(celestialA); }
+                        // Display spaceship boundary indicators
+                        else {
+                                // Position of indicator
+                                var xIndicator, yIndicator;
+                                // Width and height of indicator
+                                var wIndicator, hIndicator;
+
+                                // Y indicator location
+                                if (celestialA.y > CANVAS_HEIGHT) {
+                                        yIndicator = CANVAS_HEIGHT;
+                                        // Make width proportional to distance off screen
+                                        wIndicator = Math.abs(CANVAS_HEIGHT - celestialA.y);
+                                } else if (celestialA.y < 0) {
+                                        yIndicator = 0;
+                                        wIndicator = Math.abs(0 - celestialA.y);
+                                } else {
+                                        yIndicator = celestialA.y;
+                                        wIndicator = 10;
+                                }
+
+                                // X indicator location
+                                if (celestialA.x > CANVAS_WIDTH) {
+                                        xIndicator = CANVAS_WIDTH;
+                                        hIndicator = Math.abs(CANVAS_WIDTH - celestialA.x);
+                                } else if (celestialA.x < 0) {
+                                        xIndicator = 0;
+                                        hIndicator = Math.abs(0 - celestialA.x);
+                                } else {
+                                        xIndicator = celestialA.x;
+                                        hIndicator = 10;
+                                }
+
+                                // TODO Fix edge cases
+
+                                // Display indicator
+                                fill(color(255, (50 - 0), (50 - 0)));
+                                rect(xIndicator - (wIndicator / 2), yIndicator - (hIndicator / 2), wIndicator, hIndicator);
+                        }
                 } else if (collisionReport === 3) { // Explosive collision
                         // Visual debugging
                         fill(color(100, 50, 20));
@@ -1020,24 +1205,23 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         }
         // Get net x and y accelerations of planet
         // with respect to universe cog and other planets.
-        this.getNetAcc = function(planetIndex) {
+        this.getNetAcc = function(celestialIndex) {
                 var netAcc = [0, 0];
-                var planet = this.celestials[planetIndex];
+                var celestial = this.celestials[celestialIndex];
 
-                // TODO replace with legit end planet
-                var startPlanet = this.celestials[0];
-                var endPlanet = this.celestials[this.celestials.length - 1];
+                // Skip nulls
+                if (celestial instanceof NullCelestial) { return; }
 
                 // Add planets to net acceleration
                 for (j = 0; j < this.celestials.length; j++) {
-                        if (j !== planetIndex) {
-                                var otherPlanet = this.celestials[j];
-                                var acc = this.getPairAcc(planet, otherPlanet);
+                        if (j !== celestialIndex) {
+                                var otherCelestial = this.celestials[j];
+
+                                if (otherCelestial instanceof NullCelestial) { continue; }
+
+                                var acc = this.getPairAcc(celestial, otherCelestial);
                                 netAcc[0] += acc[0];
                                 netAcc[1] += acc[1];
-
-                                if (otherPlanet !== startPlanet && otherPlanet !== endPlanet) {
-                                }
                         }
                 }
 
@@ -1052,7 +1236,6 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                         this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
                 }
         }
-
         // Render frame in universe
         this.move = function() {
                 // Render background stars
@@ -1067,6 +1250,7 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var spaceshipNetAcc = this.getNetAcc(0);
                 // Update spaceship's awareness of other celestials
                 spaceship.celestials = this.celestials.slice(1, this.celestials.length);
+
 /*
             fill(255, 0, 0);
             stroke(255, 0, 0);
@@ -1203,10 +1387,16 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
                 // Render all celestials
                 for (i = 1; i < this.celestials.length; i++) {
+                        var celestial = this.celestials[i];
+                        // TODO Update to getNetAcc(celestial)
                         var planetNetAcc = this.getNetAcc(i);
-                        this.celestials[i].move(planetNetAcc);
-                        this.celestials[i].display();
+                        celestial.move(planetNetAcc);
+                        celestial.display();
                 }
+
+                // TODO replace with legit end planet
+                var startPlanet = this.celestials[0];
+                var endPlanet = this.celestials[this.celestials.length - 1];
 
                 // Update stats in HTML console
                 /*
@@ -1227,6 +1417,10 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
         // Add spaceship
         this.addSpaceship();
+        // Add friends
+        for (var i = 0; i < 10; i++) {
+                this.addFriend();
+        }
         // Generate unique background of stars
         this.generateBackground();
         // Add stars
@@ -1416,6 +1610,7 @@ function Console(simulation) {
                 this.simulation.move();
                 this.simulation.display();
 
+                // Display stats to screen
                 this.showStats();
         }
 }

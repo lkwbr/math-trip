@@ -1,21 +1,11 @@
 TODO
+      - Each celestial has it's own destroy handler, in addition to the destroy handler in the Universe
+      - Target planet for spaceship to land on and/or destroy
       - Metric accuracy - velocity, distance, mass, etc.
-      - Spaceship predicted route spacing with limited total distance
-      - Toggle display features:
-            + Force web
-            + Mass hierarchy
-            + Map (route + destination)
-      - Spaceship thrust bug resolve (stops at level 2)
-      - Limited time between missile shots
-      - Extended fire animation
       - Improve object inheritance and hierarchy
       - Planet leaving, docking, and landing
-      - Planet destroy (with missiles)
-            + Adding more tiny celestials and reducing original planet size and color
-      - Spaceship speedup on thrust bug
-      - Good collision detection
       - AUTOPILOT FEATURE
             + Upon button press, ship will start on planet and land on target planet
               without assistance
-      - Upload to free server for employers to see at job fair
-      - FIGHTER BOT
+      - Upload to free server
+      - FIGHTER BOTS
