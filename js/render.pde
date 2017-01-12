@@ -8,11 +8,7 @@
  *    We'll see where this goes.
  */
 
-/* TODO
-      - Add trance audio
-      - Have objects that allow things to move independently
-      - Organize and comment code
- */
+"use scrict";
 
 // Audio effects
 var backgroundMusic = new Audio("/res/audio/gothic_suburbia.mp3");
@@ -56,7 +52,7 @@ var SPACESHIP_R = 10;
 var SPACESHIP_THRUST = 500; // Newtons
 
 // Universe
-var NUM_PLANETS = 30;
+var NUM_PLANETS = 50;
 var NUM_ASTEROIDS = 20;
 var NUM_STARS = 0;
 var CHAOS_LEVEL = 0.1;
@@ -136,6 +132,7 @@ var CHAOS_LEVEL = 0.1;
 
 // Display console
 var console;
+
 // Declare universe
 var universe;
 
@@ -154,11 +151,16 @@ var gridMode = false;
 
 // Canvas constructor
 void setup() {
+        console.log("Fuck");
+
+        // TODO: remove
+        return;
+
         // Big bang
-        universe = new Universe(NUM_STARS, NUM_PLANETS, NUM_ASTEROIDS, CHAOS_LEVEL);
+        //universe = new Universe(NUM_STARS, NUM_PLANETS, NUM_ASTEROIDS, CHAOS_LEVEL);
 
         // Create console with universe as member
-        console = new Console(universe);
+        //console = new Console(universe);
 
         // Set canvas and drawing properties
         background(color(255, 255, 255));
@@ -173,7 +175,7 @@ void setup() {
 // Driver function for animations
 void draw() {
         // Update universe time
-        console.display();
+        // console.display();
 };
 
 // Base class for celestials: Star, Planet, Spaceship, etc.
@@ -321,8 +323,8 @@ function Friend(x, y, r, velX, velY, density, aColor) {
                 // Follow next friend
                 // TODO Fix the error of this.next being null
                 if (this.next) {
-                     accX += (this.next.x - this.x) / Math.pow(10, 6);
-                     accY += (this.next.y - this.y) / Math.pow(10, 6);
+                     accX += (this.next.x - this.x) / Math.pow(10, 5);
+                     accY += (this.next.y - this.y) / Math.pow(10, 5);
                 }
 
                 // Velocity
@@ -345,7 +347,6 @@ function Friend(x, y, r, velX, velY, density, aColor) {
                 fill(this.color);
                 rect(this.x - this.r / 2, this.y - this.r /2, this.r * 2, this.r * 2);
         }
-
         this.destroy = function() {
                 if (this.previous) { this.previous.next = this.next; }
                 // We are root
@@ -411,8 +412,9 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 else if (this.velY < 0) { theta += 2 * Math.PI; }
 
                 // Add missle to universe
-                var missile = new Missile(this.x, this.y, this.velX + ROCKET_VELOCITY * Math.cos(theta), this.velY + ROCKET_VELOCITY * Math.sin(theta));
-                this.universe.addCelestial(missile);
+                this.universe.addCelestial(this.universe.CelestialeEnum.MISSLE, this.x, this.y, this.velX + ROCKET_VELOCITY * Math.cos(theta), this.velY + ROCKET_VELOCITY * Math.sin(theta), ROCKET_DENSITY, ROCKET_COLOR);
+
+                // Update missle count
                 this.missleCount--;
 
                 // Play sound
@@ -465,7 +467,7 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                                 netAccX += accX;
                                 netAccY += accY;
 
-                                // NOTE Assume for the entire prediction no other celestial is moving,
+                                // NOTE: Assume for the entire prediction no other celestial is moving,
                                 // so we have a snapshot of the universe. We render according to that,
                                 // considering our spaceship is moving.
 
@@ -540,25 +542,21 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
         this.thrustUp = function() {
                 if (this.canThrust() == false) { return; }
                 this.velY += -this.thrust / this.mass;
-                //this.move([0, -this.thrust/this.mass]);
                 this.isThrustUp = true;
         }
         this.thrustDown = function() {
                 if (this.canThrust() == false) { return; }
                 this.velY += this.thrust / this.mass;
-                //this.move([0, this.thrust/this.mass]);
                 this.isThrustDown = true;
         }
         this.thrustLeft = function() {
                 if (this.canThrust() == false) { return; }
                 this.velX += -this.thrust / this.mass;
-                //this.move([-this.thrust/this.mass, 0]);
                 this.isThrustLeft = true;
         }
         this.thrustRight = function() {
                 if (this.canThrust() == false) { return; }
                 this.velX += this.thrust / this.mass;
-                //this.move([this.thrust/this.mass, 0]);
                 this.isThrustRight = true;
         }
         // Display spaceship
@@ -566,6 +564,8 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
 
                 // Predicted route
                 if (chartMode == true) { this.chart(); }
+                
+                // TODO: Get rid of the bloody if-else statements!
 
                 // Thrust
                 noStroke();
@@ -574,7 +574,6 @@ function Spaceship(universe, x, y, r, velX, velY, density, aColor) {
                 if (this.isThrustUp == true) {
                         if (this.isThrustRight == true) {
                                 thrustAngle = Math.PI / 4;
-                                //text((thrustAngle / Math.PI) + "π", this.x + 20, this.y + 20);
                                 ellipse(this.x - (this.r * 0.5), this.y + (this.r * 0.5), this.r * 2, this.r * 2);
                         } else if (this.isThrustLeft == true) {
                                 thrustAngle = (3 / 4) * Math.PI;
@@ -722,11 +721,11 @@ function Planet(x, y, r, velX, velY, density, aColor) {
         };
 
         this.destroy = function() {
-
         }
 }
 
 // -- DUMP --
+// TODO: Deeply integrate polymorphism and design patterns
 // TODO Give Planet object shards[], which stores tiny planets broken off from
 // a collision.
 // TODO Give .move() functions an argument, with default argument as 1, representing Number
@@ -738,7 +737,7 @@ function Planet(x, y, r, velX, velY, density, aColor) {
 // TODO Add generic addCelestial() function, b/c all this code looks redundant
 // TODO Have all celestials inherit from Celestials object
 
-
+// Skeleton for all simulations
 function Simulation(argv) {
         this.getStats = function() {
 
@@ -750,7 +749,6 @@ function Simulation(argv) {
 
         }
 };
-
 
 // Universe constructor
 //    1) Declare variables
@@ -794,14 +792,82 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
         this.asteroidRadius = CANVAS_WIDTH/256;
         this.asteroidVelocity = this.catalyze*4;
 
+        // Keep list of base celestials
+        var CelestialEnum = {
+            PLANET : 0,
+            ASTEROID : 1,
+            STAR : 2,
+            SPACESHIP : 3,
+            FRIEND : 4
+            MISSLE : 5
+        };
+        // Declaring celestial factory
+        function celestialFactory() {};
+        celestialFactory.prototype.createCelestial = function createCelestial(options) {
+            var parentClass = null;
+
+            switch (options.type) {
+            case CelestialEnum.PLANET: { parentClass = Planet; break; }
+            case CelestialEnum.STAR: { parentClass = Star; break; }
+            case CelestialEnum.SPACESHIP: { parentClass = Spaceship; break; }
+            case CelestialEnum.FRIEND: { parentClass = Friend; break; }
+            case CelestialEnum.MISSLE: { parentClass = Missle; break; }
+            default: {
+                alert("Error: case default!");
+                return false;
+            }
+            }
+
+            return new parentClass(options.x, options.y, options.r, options.velX, options.velY, options.density, options.color);
+        };         
+        // Instantiating celestial factory
+        var factory = new celestialFactory();
+
         // Friend stuff
         this.rootFriend = null;
 
-        this.addCelestial = function(cel) {
-                this.celestials.push(cel);
+        // TODO : Assign each enum type with its corresponding velocity, radius, and color? (in form of JSON)
+
+        this.addCelestial = function(celType, x, y, r, velX, velY, density, color) {
+            // Create celestial with factory
+                var celestial = factory.createCelestial({
+                    type : celType,
+                    r : r,
+                    x : x,
+                    y : y,
+                    velX : velX,
+                    velY : velY,
+                    density : density,
+                    color : color       
+                });               
+
+                // Add to universe
+                this.celestials.push(celestial);
+                this.updateGreatestMass(celestial);
+        };
+        // TODO Perhaps replace with some kind of template
+        this.addRandomCelestial = function(celType, r, vel, density, color) {
+                // Generate random variables
+                // TODO: Rename for naming conflicts in JSON?
+                var tempPos = this.getRandomPosition();
+                var tempX = tempPos[0];
+                var tempY = tempPos[1];
+                var tempVelX = random(vel) - vel / 2;
+                var tempVelY = random(vel) - vel / 2;
+                var tempR = random(r);
+
+                // Check if plausible placement
+                if (this.canISpawn(tempX, tempY, tempR) === false) { return new NullCelestial(); }
+
+                // Delegate adding to universe
+                this.addCelestial(celType, tempX, tempY, tempVelX, tempVelY, density, color);
+
+                // Return created celestial
+                return celestial;
         }
         // For adding asteroids (which have slightly different properties from planets)
         this.addAsteroid = function() {
+                /*
                 var pos = this.getRandomPosition();
                 var x = pos[0];
                 var y = pos[1];
@@ -813,8 +879,12 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var planet = new Planet(x, y, r, velX, velY, this.asteroidDensity, this.asteroidColor);
                 this.celestials.push(planet);
                 this.updateGreatestMass(planet);
+                */
+                // TODO: Something like this: "this.addRandomCelestial(CelestialEnum.PLANET, this.Asteroid.r, this.Asteroid.v, ...)", and a JSON type with this.Asteroid is passed to a function. I'm not thinking clearly, atm.
+                this.addRandomCelestial(CelestialEnum.PLANET, this.asteroidRadius, this.asteroidVelocity, this.asteroidDensity, this.asteroidColor);
         }
         this.addPlanet = function() {
+                /* PAST STUFF
                 var pos = this.getRandomPosition();
                 var x = pos[0];
                 var y = pos[1];
@@ -826,14 +896,11 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var asteroid = new Planet(x, y, r, velX, velY, this.planetDensity, this.planetColor);
                 this.celestials.push(asteroid);
                 this.updateGreatestMass(asteroid);
+                */
+                this.addRandomCelestial(CelestialEnum.PLANET, this.planetRadius, this.planetVelocity, this.planetDensity, this.planetColor);
         }
-        /* Attempted overload
-           this.addPlanet = function(planet) {
-                this.celestials.push(planet);
-                this.updateGreatestMass(planet);
-           }
-         */
         this.addStar = function() {
+                /*
                 var pos = this.getRandomPosition();
                 var x = pos[0];
                 var y = pos[1];
@@ -845,8 +912,11 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var star = new Star(x, y, r, velX, velY, this.starDensity, this.starColor);
                 this.celestials.push(star);
                 this.updateGreatestMass(star);
+                */
+                this.addRandomCelestial(CelestialEnum.STAR, this.starRadius, this.starVelocity, this.starDensity, this.starColor);
         }
         this.addSpaceship = function() {
+                /*
                 var pos = this.getRandomPosition();
                 var x = pos[0];
                 var y = pos[1];
@@ -858,9 +928,12 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 var spaceship = new Spaceship(this, x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
                 this.celestials.push(spaceship);
                 this.updateGreatestMass(spaceship);
+                */
+                this.addRandomCelestial(CelestialEnum.SPACESHIP, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
         }
         // NOTE Basing it off of spaceship for now
         this.addFriend = function() {
+                /*
                 var pos = this.getRandomPosition();
                 var x = pos[0];
                 var y = pos[1];
@@ -888,6 +961,22 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
                 // Add friend to universe now
                 this.celestials.push(newFriend);
                 this.updateGreatestMass(newFriend);
+                */
+                var newFriend = this.addRandomCelestial(CelestialEnum.FRIEND, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
+                // Root case
+                if (!this.rootFriend) { this.rootFriend = newFriend; }
+                // Make sure linked list is maintained
+                else {
+                        var tempFriend = this.rootFriend;
+                        // Get last friend in list
+                        while (tempFriend.next) {
+                                tempFriend = tempFriend.next;
+                        }
+                        // Add new friend to end of list
+                        tempFriend.next = newFriend;
+                        // Linkup new friend with previous friend
+                        newFriend.previous = tempFriend;
+                }
         }
         // TODO If user clicks planet, set that as target planet
         this.getRandomPlanet = function() {
@@ -1077,9 +1166,6 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
                 var numFrags = random(5) + 2;
 
-                // Cleanup celestial
-                //celestial.destroy();
-
                 // Copy celestial
                 var celestialModel = jQuery.extend(true, {}, celestial);
                 celestialModel.color = color(255, 0, 255);
@@ -1089,13 +1175,17 @@ function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All els
 
                 // Generate fragments
                 for (var i = 0; i < numFrags; i++) {
-                        // Deep copy of celestial
+                        // Deep copy of original
                         var fragmentCelestial = jQuery.extend(true, {}, celestialModel);
+                        // Modify
                         fragmentCelestial.r = celestialModel.r / numFrags;
                         fragmentCelestial.x += random(2) + 1;
                         fragmentCelestial.y += random(2) + 1;
+                        // Initiate
                         this.celestials.push(fragmentCelestial);
                 }
+                                
+                
 
                 // Play sound
                 fragmentizeSound.play();
@@ -1594,8 +1684,7 @@ function Console(simulation) {
         // Clear whole console with dark gray
         this.clear = function() {
                 fill(BG_COLOR);
-                rect(0, 0, this.W, this.H);
-        }
+                rect(0, 0, this.W, this.H); }
         this.display = function() {
                 // Hide past frame
                 this.clear();
@@ -1672,207 +1761,3 @@ mouseClicked = function() {
 function getRandColor(intensity) {
         return color(random(intensity), random(intensity), random(intensity));
 }
-
-/*
-
-   /* Music functions
-
-   var playLong() {
-    T.pause();
-    var freq = T("pulse", {
-        freq: random(500),
-        add: 880,
-        mul: 20
-    }).kr();
-    T("sin", {
-        freq: freq,
-        mul: 0.5
-    }).play();
-   }
-
-   var nextNote() {
-    // Increase octave everytime we reach
-    // the 7th note.
-    if (note == 7) {
-        octave++;
-    }
-    // Keep note within bounds of scale
-    note = (note + 1) % scale.length;
-   }
-
-   var resetNote() {
-    note = 0;
-    octave = 1;
-   }
-
-   var playShort() {
-    // Get current frequency.
-    //var f = scale[note] * octave;
-    //var f = 27.5 * 10;
-    var sine1 = T("sin", {
-        freq: ((maxSpiralLength - length) / random(3)),
-        mul: 0.5
-    });
-    T("perc", {
-        r: 500
-    }, sine1).on("ended", function() {
-        this.pause();
-    }).bang().play();
-    nextNote();
-   }
-
-   /* Manipulate spirals
-
-   var moveSpiral() {
-    spiralY += spiralVelY * spiralT + 0.5 * spiralAccY * Math.pow(spiralT, 2);
-    spiralX += spiralVelX * spiralT + 0.5;
-    spiralT += 0.001;
-   }
-
-   var softResetSpiral() {
-    spiralX = CANVAS_WIDTH;
-    spiralY = 0;
-
-    spiralVelX = -random(spiralVelMax / 2) - spiralVelMax;
-    spiralVelY = 0; //random(spiralVelMax) - random(spiralVelMax*5) ;
-
-    cirT = 0;
-
-    resetNote();
-   }
-
-   var hardResetSpiral() {
-    background(color(255, 255, 255));
-
-    softResetSpiral();
-    maxSpiralLength = maxAbsLength;
-    length = maxSpiralLength;
-    angle = 0;
-    count = 0;
-   }
-
-   /* Fade past objects on canvas
-
-   var spiral = function() {
-    // Play sound in intervals!
-    //playShort();
-    //if ((length % 10) === 0) {  }
-
-    // Translate spiral location
-    moveSpiral();
-
-    // TODO Figure out how to stop resetting stroke.
-    stroke(255, 255, 255);
-
-    // Compute Color
-    var intensity = (1 - (length / intensityIncr)) * 255;
-
-    // Know when to stop drawing, and reset whole thing.
-    if (maxSpiralLength < -10) {
-        hardResetSpiral();
-        return;
-    }
-
-    // Reset animation params or decrease length
-    if (length < 0) {
-        //playLong();
-        // Do some cool shit.
-        //startObj();
-
-        softResetSpiral();
-
-        maskCanvas();
-
-        //splatter(pastColor);
-
-        maxSpiralLength -= 8 * 3.1415926;
-        length = maxSpiralLength;
-
-        pastColor = thisColor;
-        //thisColor = blendColor(thisColor, pastColor, ADD);
-        thisColor = getRandColor(intensity);
-        strokeWeight(1 + random(5));
-        angleIncr = (random(500)) / (4 * 3.1415926);
-        //stroke(thisColor);
-
-        //woahInt++;
-    } else {
-        length--;
-    }
-
-    // Compute circle attributes
-    circleRadius = length * Math.atan(angle) / 2; //round(length) + random(0, randomness);
-
-    pastX = x;
-    pastY = y;
-    x = spiralX + length * Math.cos(angle) + random(0, randomness);
-    y = spiralY + length * Math.sin(angle) + random(0, randomness);
-
-    // Draw circle
-    fill(thisColor);
-    ellipse(x + circleRadius, y, circleRadius*2, circleRadius*2);
-    //triangle(x - circleRadius, y - circleRadius, x + circleRadius, y - circleRadius, x, y + circleRadius);
-    //rect(x + circleRadius, y + circleRadius, circleRadius*2, circleRadius*2);
-    //point(x, y);
-    //curveVertex(x,  y);
-    //line(x, y, pastX, pastY);
-
-    // Increment angle by 1/(2*pi) rad
-    angle += angleIncr / (2 * 3.1415926);
-
-    // Write text
-    updateCount();
-
-    //background(color(random(255), random(255), random(255)));
-   };
-
-   /*
-
-   // Variables for gravity object
-   var objX = 0;
-   var objY = 0;
-   var objVelY = 0;
-   var objVelX = 0;
-   var objAcc = 200;
-   var objRun = false;
-   var t = 0; // seconds
-
-   var startObj = function() {
-    objX = centerX;
-    objY = centerY;
-
-    objVelX = random(10) - random(20);
-    objVelY = random(10) - random(10);
-
-    t = 0;
-
-    objRun = true;
-   }
- */
-
-/* Gravity play */
-
-/*
-
-   // Set new gravity object
-   mouseClicked = function() {
-    //startObj();
-   };
-
-   // Render gravity animation
-   var gravity = function() {
-    fill(0, 0, 0);
-    ellipse(objX, objY, circleRadius, circleRadius);
-
-    //objVelY = objAcc * dt;
-    objY += objVelY * t + 0.5 * objAcc * Math.pow(t, 2);
-    objX += objVelX * t + 0.5;
-    t += 0.001;
-
-    // Stop animation when object hits ground.
-    if (objY - circleRadius > CANVAS_HEIGHT) {
-        objRun = false;
-    }
-   };
-
- */

@@ -3,10 +3,10 @@
 body {
       margin: 0em;
       padding: 0em;
-      background-color: rgb(4, 6, 29);
-      background-size: cover;
+      /*background-color: rgb(4, 6, 29);*/
+      /*background-size: cover;*/
 }
 
 #simulation {
-      width: 99%
+      width: 99%;
 }
