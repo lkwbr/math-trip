@@ -19,10 +19,10 @@ var thrustSound = new Audio("/res/audio/ping.mp3");
 // Canvas
 var CANVAS_WIDTH = window.innerWidth;
 var CANVAS_HEIGHT = window.innerHeight;
-var FPS = 50;
+var FPS = 1; //50
 var CENTER_X = CANVAS_WIDTH / 2;
 var CENTER_Y = CANVAS_HEIGHT / 2;
-var FADE_LEVEL = 100;
+var FADE_LEVEL = 1000; //100;
 var BG_COLOR = null; 
 
 // Celestials
@@ -52,16 +52,17 @@ var SPACESHIP_R = 10;
 var SPACESHIP_THRUST = 500; // Newtons
 
 // Universe
-var NUM_PLANETS = 50;
-var NUM_ASTEROIDS = 20;
+var NUM_PLANETS = 10;
+var NUM_ASTEROIDS = 0;
 var NUM_STARS = 0;
-var CHAOS_LEVEL = 0.1;
+var CHAOS_LEVEL = 0;
+
 
 // Display console
 var console;
-
 // Declare universe
 var universe;
+
 
 // Key controls
 var spaceKeyDown = false;
@@ -623,20 +624,23 @@ function Star(x, y, r, velX, velY, density, aColor) {
 }
 
 // Planet constuctor
-function Planet(x, y, r, velX, velY, density, aColor) {
-  this.name = "Planet";
-  this.x = x;
-  this.y = y;
-  this.velX = velX;
-  this.velY = velY;
-  this.r = r;
-  this.color = PLANET_COLOR;//aColor;
-  this.density = density;
-  this.volume = (4/3) * Math.PI * Math.pow(this.r, 3);
-  this.mass = this.density * this.volume;
+class Planet {
+  constructor(x, y, r, velX, velY, density, aColor) {
+    this.name = "Planet";
+    this.x = x;
+    this.y = y;
+    this.velX = velX;
+    this.velY = velY;
+    this.r = r;
+    this.color = PLANET_COLOR;//aColor;
+    this.density = density;
+    this.volume = (4/3) * Math.PI * Math.pow(this.r, 3);
+    this.mass = this.density * this.volume;
+  }
+
   // Render next frame of planet given current
   // net acceleration computed by universe.
-  this.move = function(acc) {
+  move(acc) {
     // Get acceleration components
     var accX = acc[0];
     var accY = acc[1];
@@ -650,7 +654,7 @@ function Planet(x, y, r, velX, velY, density, aColor) {
     this.y += this.velY;
 
   };
-  this.display = function() {
+  display() {
     // Planet draw!
     noStroke();
     fill(this.color);
@@ -659,7 +663,7 @@ function Planet(x, y, r, velX, velY, density, aColor) {
     ellipse(this.x, this.y, this.r*2/100, this.r*2/100);
   };
 
-  this.destroy = function() {
+  destroy() {
   }
 }
 
@@ -676,794 +680,741 @@ function Planet(x, y, r, velX, velY, density, aColor) {
 // TODO Add generic addCelestial() function, b/c all this code looks redundant
 // TODO Have all celestials inherit from Celestials object
 
+// TODO: Better placement
+function throwNotImplemented() {
+	throw {name : "NotImplementedError", message : "too lazy to implement"};
+}
+
 // Skeleton for all simulations
-function Simulation(argv) {
-  this.getStats = function() {
+class Simulation { 
+  constructor(argv) { }
 
-  }
-  this.move = function() {
-
-  }
-  this.display = function() {
-
-  }
+  // Pure virtual methods
+  getStats() { throwNotImplemented(); }
+  move() { throwNotImplemented(); }
+  display() { throwNotImplemented(); }
 };
 
 // Universe constructor
 //    1) Declare variables
 //    2) Declare functions
 //    3) Populate universe
-function Universe(numStars, numPlanets, numAsteroids, catalyze) {     // All else is randomized
-  this.name = "Universe";
+class Universe { 
+  constructor(numStars, numPlanets, numAsteroids, catalyze) {     // All else is randomized
+    this.name = "Universe";
 
-  // Stores our planets, asteroids, spaceships, and stars.
-  this.celestials = [];
-  // Just for looks
-  this.backgroundStars = [];
-  // Gravitational constant
-  this.G = 6.674 * Math.pow(10, -11);
+    // Stores our planets, asteroids, spaceships, and stars.
+    this.celestials = [];
+    this.backgroundStars = [];
 
-  // Constructor vars to member
-  this.numStars = numStars;
-  this.numPlanets = numPlanets;
-  this.numAsteroids = numAsteroids;
-  this.catalyze = catalyze;
-  this.greatestMass = 0; // Sets the weighted force web context
+    // Gravitational constant
+    this.G = 6.674 * Math.pow(10, -11);
 
-  // Spaceship stuff
-  this.spaceshipColor = color(0, 0, 0);
-  this.spaceshipDensity = 1;
-  this.spaceshipRadius = SPACESHIP_R; // baseline radius for star
-  this.spaceshipVelocity = this.catalyze*8;
-  // Star attributes
-  this.starColor = color(255, 255, 0);
-  this.starDensity = Math.pow(10, 8);
-  this.starRadius = CANVAS_WIDTH/8; // baseline radius for star
-  this.starVelocity = this.catalyze/2;
-  // Planet atributes
-  this.planetColor = getRandColor(255);
-  this.planetDensity = 8;
-  this.planetRadius = CANVAS_WIDTH/30;
-  this.planetVelocity = this.catalyze*1.5; // in meters/sec
-  // Asteroid attributes
-  this.asteroidColor = color(150, 150, 150);
-  this.asteroidDensity = 6;
-  this.asteroidRadius = CANVAS_WIDTH/256;
-  this.asteroidVelocity = this.catalyze*4;
+    // Constructor vars to member
+    this.numStars = numStars;
+    this.numPlanets = numPlanets;
+    this.numAsteroids = numAsteroids;
+    this.catalyze = catalyze;
+    this.greatestMass = 0; // Sets the weighted force web context
 
-  // Keep list of base celestials
-  var CelestialEnum = {
-PLANET : 0,
-         ASTEROID : 1,
-         STAR : 2,
-         SPACESHIP : 3,
-         FRIEND : 4,
-         MISSLE : 5
-  };
-  // Declaring celestial factory
-  function celestialFactory() {};
-  celestialFactory.prototype.createCelestial = function createCelestial(options) {
-    var parentClass = null;
+    // Spaceship stuff
+    this.spaceshipColor = color(0, 0, 0);
+    this.spaceshipDensity = 1;
+    this.spaceshipRadius = SPACESHIP_R; // baseline radius for star
+    this.spaceshipVelocity = this.catalyze*8;
+    // Star attributes
+    this.starColor = color(255, 255, 0);
+    this.starDensity = Math.pow(10, 8);
+    this.starRadius = CANVAS_WIDTH/8; // baseline radius for star
+    this.starVelocity = this.catalyze/2;
+    // Planet atributes
+    this.planetColor = getRandColor(255);
+    this.planetDensity = 8;
+    this.planetRadius = 50;//CANVAS_WIDTH/30;
+    this.planetVelocity = this.catalyze*1.5; // in meters/sec
+    // Asteroid attributes
+    this.asteroidColor = color(150, 150, 150);
+    this.asteroidDensity = 6;
+    this.asteroidRadius = 200;//CANVAS_WIDTH/256;
+    this.asteroidVelocity = this.catalyze*4;
 
-    switch (options.type) {
-      case CelestialEnum.PLANET: { parentClass = Planet; break; }
-      case CelestialEnum.STAR: { parentClass = Star; break; }
-      case CelestialEnum.SPACESHIP: { parentClass = Spaceship; break; }
-      case CelestialEnum.FRIEND: { parentClass = Friend; break; }
-      case CelestialEnum.MISSLE: { parentClass = Missle; break; }
-      default: {
-                 alert("Error: case default!");
-                 return false;
-               }
+    // Keep list of base celestials
+    this.CelestialEnum = {
+          PLANET : 0,
+           ASTEROID : 1,
+           STAR : 2,
+           SPACESHIP : 3,
+           FRIEND : 4,
+           MISSLE : 5
+    };
+
+    // Declaring celestial factory
+    function celestialFactory() {};
+    celestialFactory.prototype.createCelestial = function createCelestial(options) {
+      var parentClass = null;
+
+      var self = options.self;
+      switch (options.type) {
+        case self.CelestialEnum.PLANET: { parentClass = Planet; break; }
+        case self.CelestialEnum.STAR: { parentClass = Star; break; }
+        case self.CelestialEnum.SPACESHIP: { parentClass = Spaceship; break; }
+        case self.CelestialEnum.FRIEND: { parentClass = Friend; break; }
+        case self.CelestialEnum.MISSLE: { parentClass = Missle; break; }
+        default: {
+                   alert("Error: case default!");
+                   return false;
+                 }
+      }
+
+      return new parentClass(options.x, options.y, options.r, options.velX, options.velY, options.density, options.color);
+    };         
+
+    // Instantiating celestial factory
+    this.factory = new celestialFactory();
+
+    // Friend stuff
+    this.rootFriend = null;
+  
+    /* Creating celestials */
+
+    // Add spaceship
+    //this.addSpaceship();
+    // Add friends
+    for (var i = 0; i < 10; i++) {
+      //this.addFriend();
     }
-
-    return new parentClass(options.x, options.y, options.r, options.velX, options.velY, options.density, options.color);
-  };         
-  // Instantiating celestial factory
-  var factory = new celestialFactory();
-
-  // Friend stuff
-  this.rootFriend = null;
+    // Generate unique background of stars
+    this.generateBackground();
+    // Add stars
+    for (var i = 0; i < this.numStars; i++) {
+      this.addStar();
+    }
+    // Add planets
+    for (var i = 0; i < this.numPlanets; i++) {
+      this.addPlanet();
+    }
+    // Add asteroids
+    for (var i = 0; i < this.numAsteroids; i++) {
+      this.addAsteroid();
+    }
+  }
 
   // TODO : Assign each enum type with its corresponding velocity, radius, and color? (in form of JSON)
 
-  this.addCelestial = function(celType, x, y, r, velX, velY, density, color) {
+  addCelestial(celType, x, y, r, velX, velY, density, color) {
     // Create celestial with factory
-    var celestial = factory.createCelestial({
-type : celType,
-r : r,
-x : x,
-y : y,
-velX : velX,
-velY : velY,
-density : density,
-color : color       
-});               
+    var celestial = this.factory.createCelestial({
+      self : this,
+      type : celType,
+      r : r,
+      x : x,
+      y : y,
+      velX : velX,
+      velY : velY,
+      density : density,
+      color : color       
+    });               
 
-// Add to universe
-this.celestials.push(celestial);
-this.updateGreatestMass(celestial);
-};
-// TODO Perhaps replace with some kind of template
-this.addRandomCelestial = function(celType, r, vel, density, color) {
-  // Generate random variables
-  // TODO: Rename for naming conflicts in JSON?
-  var tempPos = this.getRandomPosition();
-  var tempX = tempPos[0];
-  var tempY = tempPos[1];
-  var tempVelX = random(vel) - vel / 2;
-  var tempVelY = random(vel) - vel / 2;
-  var tempR = random(r);
+    // Add to universe
+    this.celestials.push(celestial);
+    this.updateGreatestMass(celestial);
 
-  // Check if plausible placement
-  if (this.canISpawn(tempX, tempY, tempR) === false) { return new NullCelestial(); }
+    return celestial;
+  };
 
-  // Delegate adding to universe
-  this.addCelestial(celType, tempX, tempY, tempVelX, tempVelY, density, color);
+  // TODO Perhaps replace with some kind of template
+  addRandomCelestial(celType, r, vel, density, color) {
+    // Generate random variables
+    // TODO: Rename for naming conflicts in JSON?
+    var tempPos = this.getRandomPosition();
+    var tempX = tempPos[0];
+    var tempY = tempPos[1];
+    var tempVelX = random(vel) - vel / 2;
+    var tempVelY = random(vel) - vel / 2;
+    var tempR = random(r);
 
-  // Return created celestial
-  //return celestial;
-}
-// For adding asteroids (which have slightly different properties from planets)
-this.addAsteroid = function() {
-  /*
-     var pos = this.getRandomPosition();
-     var x = pos[0];
-     var y = pos[1];
-     velX = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
-     velY = random(this.asteroidVelocity) - this.asteroidVelocity / 2;
-     r = random(this.asteroidRadius);
-  // Check if plausible placement
-  if (this.canISpawn(x, y, r) === false) { return; }
-  var planet = new Planet(x, y, r, velX, velY, this.asteroidDensity, this.asteroidColor);
-  this.celestials.push(planet);
-  this.updateGreatestMass(planet);
-   */
-  // TODO: Something like this: "this.addRandomCelestial(CelestialEnum.PLANET, this.Asteroid.r, this.Asteroid.v, ...)", and a JSON type with this.Asteroid is passed to a function. I'm not thinking clearly, atm.
-  this.addRandomCelestial(CelestialEnum.PLANET, this.asteroidRadius, this.asteroidVelocity, this.asteroidDensity, this.asteroidColor);
-}
-this.addPlanet = function() {
-  /* PAST STUFF
-     var pos = this.getRandomPosition();
-     var x = pos[0];
-     var y = pos[1];
-     velX = random(this.planetVelocity) - this.planetVelocity / 2;
-     velY = random(this.planetVelocity) - this.planetVelocity / 2;
-     r = random(this.planetRadius);
-  // Check if plausible placement
-  if (this.canISpawn(x, y, r) === false) { return; }
-  var asteroid = new Planet(x, y, r, velX, velY, this.planetDensity, this.planetColor);
-  this.celestials.push(asteroid);
-  this.updateGreatestMass(asteroid);
-   */
-  this.addRandomCelestial(CelestialEnum.PLANET, this.planetRadius, this.planetVelocity, this.planetDensity, this.planetColor);
-}
-this.addStar = function() {
-  /*
-     var pos = this.getRandomPosition();
-     var x = pos[0];
-     var y = pos[1];
-     velX = random(this.starVelocity) - this.starVelocity / 2;
-     velY = random(this.starVelocity) - this.starVelocity / 2;
-     r = random(this.starRadius);
-  // Check if plausible placement
-  if (this.canISpawn(x, y, r) === false) { return; }
-  var star = new Star(x, y, r, velX, velY, this.starDensity, this.starColor);
-  this.celestials.push(star);
-  this.updateGreatestMass(star);
-   */
-  this.addRandomCelestial(CelestialEnum.STAR, this.starRadius, this.starVelocity, this.starDensity, this.starColor);
-}
-this.addSpaceship = function() {
-  /*
-     var pos = this.getRandomPosition();
-     var x = pos[0];
-     var y = pos[1];
-     velX = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-     velY = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-     r = this.spaceshipRadius;//random(this.spaceshipRadius);
-  // Check if plausible placement
-  if (this.canISpawn(x, y, r) === false) { return; }
-  var spaceship = new Spaceship(this, x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
-  this.celestials.push(spaceship);
-  this.updateGreatestMass(spaceship);
-   */
-  this.addRandomCelestial(CelestialEnum.SPACESHIP, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
-}
-// NOTE Basing it off of spaceship for now
-this.addFriend = function() {
-  /*
-     var pos = this.getRandomPosition();
-     var x = pos[0];
-     var y = pos[1];
-     velX = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-     velY = random(this.spaceshipVelocity) - this.spaceshipVelocity / 2;
-     r = this.spaceshipRadius;
-  // Check if plausible placement
-  if (this.canISpawn(x, y, r) === false) { return; }
+    // Check if plausible placement
+    if (this.canISpawn(tempX, tempY, tempR) === false) { return new NullCelestial(); }
 
-  var newFriend = new Friend(x, y, r, velX, velY, this.spaceshipDensity, this.spaceshipColor);
-  // Root case
-  if (!this.rootFriend) { this.rootFriend = newFriend; }
-  // Make sure linked list is maintained
-  else {
-  var tempFriend = this.rootFriend;
-  // Get last friend in list
-  while (tempFriend.next) {
-  tempFriend = tempFriend.next;
+    // Delegate adding to universe
+    var celestial = this.addCelestial(celType, tempX, tempY, tempVelX, tempVelY, density, color);
+
+    // Return created celestial
+    return celestial;
   }
-  // Add new friend to end of list
-  tempFriend.next = newFriend;
-  // Linkup new friend with previous friend
-  newFriend.previous = tempFriend;
+  // For adding asteroids (which have slightly different properties from planets)
+  addAsteroid() {
+    this.addRandomCelestial(this.CelestialEnum.PLANET, this.asteroidRadius, this.asteroidVelocity, this.asteroidDensity, this.asteroidColor);
   }
-  // Add friend to universe now
-  this.celestials.push(newFriend);
-  this.updateGreatestMass(newFriend);
-   */
-  var newFriend = this.addRandomCelestial(CelestialEnum.FRIEND, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
-  // Root case
-  if (!this.rootFriend) { this.rootFriend = newFriend; }
-  // Make sure linked list is maintained
-  else {
-    var tempFriend = this.rootFriend;
-    // Get last friend in list
-    while (tempFriend.next) {
-      tempFriend = tempFriend.next;
+  addPlanet() {
+    this.addRandomCelestial(this.CelestialEnum.PLANET, this.planetRadius, this.planetVelocity, this.planetDensity, this.planetColor);
+  }
+  addStar() {
+    this.addRandomCelestial(this.CelestialEnum.STAR, this.starRadius, this.starVelocity, this.starDensity, this.starColor);
+  }
+  addSpaceship() {
+    this.addRandomCelestial(this.CelestialEnum.SPACESHIP, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
+  }
+  // NOTE Basing it off of spaceship for now
+  addFriend() {
+    var newFriend = this.addRandomCelestial(CelestialEnum.FRIEND, this.spaceshipRadius, this.spaceshipVelocity, this.spaceshipDensity, this.spaceshipColor);
+    // Root case
+    if (!this.rootFriend) { this.rootFriend = newFriend; }
+    // Make sure linked list is maintained
+    else {
+      var tempFriend = this.rootFriend;
+      // Get last friend in list
+      while (tempFriend.next) {
+        tempFriend = tempFriend.next;
+      }
+      // Add new friend to end of list
+      tempFriend.next = newFriend;
+      // Linkup new friend with previous friend
+      newFriend.previous = tempFriend;
     }
-    // Add new friend to end of list
-    tempFriend.next = newFriend;
-    // Linkup new friend with previous friend
-    newFriend.previous = tempFriend;
   }
-}
-// TODO If user clicks planet, set that as target planet
-this.getRandomPlanet = function() {
+  // TODO If user clicks planet, set that as target planet
+  getRandomPlanet() {
 
-};
-this.getSpaceship = function() {
-  return this.celestials[0];
-}
-// Generic function for simulation to return array of stats for each frame
-this.getStats = function() {
-  var stats = [];
-  var ss = this.getSpaceship();
-
-  stats.push(this.celestials.length + " celestials");
-  stats.push(ss.getMissleCount() + " missles");
-  stats.push(Math.round(ss.getFuelPercentage() * 100) + "% fuel");
-  stats.push(ss.getVelocity() + " m/s");
-
-  return stats;
-};
-// Greatest mass in universe
-this.updateGreatestMass = function(celestial) {
-  if (this.greatestMass < celestial.mass) {
-    this.greatestMass = celestial.mass;
+  };
+  getSpaceship() {
+    return this.celestials[0];
   }
-}
-// Two planets have collided. Get angle of planetB
-// with respect to planetA.
-this.getAngleBetween = function(planetA, planetB) {
-  var d = this.getDistance(planetA, planetB);
-  var diffX = planetA.x - planetB.x;
-  var diffY = planetA.y - planetB.y;
+  // Generic function for simulation to return array of stats for each frame
+  getStats() {
 
-  // Angle with respect to planetA.
-  var theta = Math.atan(diffY/diffX) + Math.PI;
-  if (diffX < 0) { theta += Math.PI; }
-  else if (diffY < 0) { theta += 2 * Math.PI; }
+    return;
 
-  return theta;
-}
-// Spawning celestials
-this.getRandomPosition = function() {
-  return [random(CANVAS_WIDTH), random(CANVAS_HEIGHT)];
-}
-// Space apart collided objects
-this.giveSpace = function(planetA, planetB) {
-}
-this.getDistance = function(planetA, planetB) {
-  // Relation to planet
-  var diffX = planetA.x - planetB.x;
-  var diffY = planetA.y - planetB.y;
-  var d = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
+    var stats = [];
+    var ss = this.getSpaceship();
 
-  return d;
-}
-// Checks if potential planet will overlap preexisting planets.
-this.canISpawn = function(planetX, planetY, planetRadius) {
-  // Our test planet, which won't actually be used
-  // if a planet with these properties is valid to
-  // spawn.
-  var testPlanet = new Planet(planetX, planetY, planetRadius, 0, 0, 0, 0);
-  for (k = 0; k < this.celestials.length; k++) {
-    var existingPlanet = this.celestials[k];
-    if (this.collisionHandler(testPlanet, existingPlanet) === true) { return false; }
+    stats.push(this.celestials.length + " celestials");
+    stats.push(ss.getMissleCount() + " missles");
+    stats.push(Math.round(ss.getFuelPercentage() * 100) + "% fuel");
+    stats.push(ss.getVelocity() + " m/s");
+
+    return stats;
+  };
+  // Greatest mass in universe
+  updateGreatestMass(celestial) {
+    if (this.greatestMass < celestial.mass) {
+      this.greatestMass = celestial.mass;
+    }
   }
-
-  return true;
-}
-// Check if two planets have collided, returning one of the following:
-//  0) No collision
-//  1) Planet collision
-//  2) Boundary collision
-//  3) Missile collision
-//  4) Star collision
-this.collisionHandler = function(celestialA, celestialB) {
-  // Boundary collision
-  if (((celestialA.x + celestialA.r) > CANVAS_WIDTH)
-      || ((celestialA.x - celestialA.r) < 0)
-      || ((celestialA.y + celestialA.r) > CANVAS_HEIGHT)
-      || ((celestialA.y - celestialA.r) < 0)) {
-    /*
-    // Component differences
+  // Two planets have collided. Get angle of planetB
+  // with respect to planetA.
+  getAngleBetween(planetA, planetB) {
+    var d = this.getDistance(planetA, planetB);
     var diffX = planetA.x - planetB.x;
     var diffY = planetA.y - planetB.y;
 
-    // Just invert the velocity
-    planetA.velX *= -1;
-    planetA.velY *= -1;
-
     // Angle with respect to planetA.
     var theta = Math.atan(diffY/diffX) + Math.PI;
     if (diffX < 0) { theta += Math.PI; }
     else if (diffY < 0) { theta += 2 * Math.PI; }
 
-    // Give safe space
-    var angle = this.getAngleBetween(planetA, planetB);
-    // According to this angle, push out planetA +5 the planetDist, using trig!
-    var pushDist = 1;
-    planetA.x += pushDist*cos(angle);
-    planetA.y += pushDist*sin(angle);
-     */
-    return 2;
+    return theta;
   }
+  // Spawning celestials
+  getRandomPosition() {
+    return [random(CANVAS_WIDTH), random(CANVAS_HEIGHT)];
+  }
+  // Space apart collided objects
+  giveSpace(planetA, planetB) {
+  }
+  getDistance(planetA, planetB) {
+    // Relation to planet
+    var diffX = planetA.x - planetB.x;
+    var diffY = planetA.y - planetB.y;
+    var d = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
 
-  // Celestial collision
-  var d = this.getDistance(celestialA, celestialB);
-  if ((d - celestialA.r - celestialB.r) < 0) {
-    // Missile collision
-    if (celestialA instanceof Missile)
-    {
-      // Missle doesn't affect spaceship itself
-      if (celestialB instanceof Spaceship) { return 0; }
-
-      return 3;
+    return d;
+  }
+  // Checks if potential planet will overlap preexisting planets.
+  canISpawn(planetX, planetY, planetRadius) {
+    // Our test planet, which won't actually be used
+    // if a planet with these properties is valid to
+    // spawn.
+    var testPlanet = new Planet(planetX, planetY, planetRadius, 0, 0, 0, 0);
+    for (var k = 0; k < this.celestials.length; k++) {
+      var existingPlanet = this.celestials[k];
+      if (this.collisionHandler(testPlanet, existingPlanet) === true) { return false; }
     }
-    // Star collsion
-    if (celestialA instanceof Star) { return 4; }
 
-    // Angle to push other planet away
-    //var angle = this.getAngleBetween(planetA, planetB);
+    return true;
+  }
+  // Check if two planets have collided, returning one of the following:
+  //  0) No collision
+  //  1) Planet collision
+  //  2) Boundary collision
+  //  3) Missile collision
+  //  4) Star collision
+  collisionHandler(celestialA, celestialB) {
+    // Boundary collision
+    if (((celestialA.x + celestialA.r) > CANVAS_WIDTH)
+        || ((celestialA.x - celestialA.r) < 0)
+        || ((celestialA.y + celestialA.r) > CANVAS_HEIGHT)
+        || ((celestialA.y - celestialA.r) < 0)) {
+      /*
+      // Component differences
+      var diffX = planetA.x - planetB.x;
+      var diffY = planetA.y - planetB.y;
+
+      // Just invert the velocity
+      planetA.velX *= -1;
+      planetA.velY *= -1;
+
+      // Angle with respect to planetA.
+      var theta = Math.atan(diffY/diffX) + Math.PI;
+      if (diffX < 0) { theta += Math.PI; }
+      else if (diffY < 0) { theta += 2 * Math.PI; }
+
+      // Give safe space
+      var angle = this.getAngleBetween(planetA, planetB);
+      // According to this angle, push out planetA +5 the planetDist, using trig!
+      var pushDist = 1;
+      planetA.x += pushDist*cos(angle);
+      planetA.y += pushDist*sin(angle);
+       */
+      return 2;
+    }
+
+    // Celestial collision
+    var d = this.getDistance(celestialA, celestialB);
+    if ((d - celestialA.r - celestialB.r) < 0) {
+      // Missile collision
+      if (celestialA instanceof Missile)
+      {
+        // Missle doesn't affect spaceship itself
+        if (celestialB instanceof Spaceship) { return 0; }
+
+        return 3;
+      }
+      // Star collsion
+      if (celestialA instanceof Star) { return 4; }
+
+      // Angle to push other planet away
+      //var angle = this.getAngleBetween(planetA, planetB);
+      var diffX = celestialA.x - celestialB.x;
+      var diffY = celestialA.y - celestialB.y;
+
+      // Angle with respect to planetA.
+      var theta = Math.atan(diffY/diffX) + Math.PI;
+      if (diffX < 0) { theta += Math.PI; }
+      else if (diffY < 0) { theta += 2 * Math.PI; }
+
+      // Display push animation
+      fill(color(200, 100, 250));
+      ellipse(celestialB.x + (10 * Math.cos(theta)), celestialB.y + (10 * Math.sin(theta)), celestialB.r*2, celestialB.r*2);
+
+      // Push two celestials apart
+      var repulsiveForce = (celestialB.mass / Math.pow(10, 7));
+      celestialB.velX += repulsiveForce * Math.cos(theta);
+      celestialB.velY += repulsiveForce * Math.sin(theta);
+
+      // According to this angle, push out planetA +5 the planetDist, using trig!
+      // var pushDist = planetB.r;
+      // planetB.x += pushDist * cos(theta);
+      // planetB.y += pushDist * sin(theta);
+
+      // Elastic collision, momentum conserved
+      //planetA.velX = (planetA.velX * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velX) / (planetA.mass + planetB.mass);
+      //planetA.velY = (planetA.velY * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velY) / (planetA.mass + planetB.mass);
+
+      // Planet collision
+      return 1;
+    }
+
+    // No collision
+    return 0;
+  }
+  debugLog() {
+    for (var i = 0; i < this.celestials.length; i++)
+    {
+      print(this.celestials[i].name + "\t");
+    }
+    print("\n--------------------------\n");
+
+    return;
+  };
+  // Remove celestial from universe
+  destroy(celestial) {
+    // Don't destroy spaceship or star
+    if (celestial instanceof Spaceship || celestial instanceof Star) { return; }
+    // Search for celestial to destroy
+    for (var i = 0; i < this.celestials.length; i++)
+    {
+      if (this.celestials[i] === celestial) {
+        celestial.color = color(0, 255, 0);
+        // TODO Fix error with splicing
+        //this.celestials.splice(i, 1);
+        // Have celestial handle destruction cleanup
+        this.celestials[i].destroy();
+        // For now, we just nullify the celestial
+        this.celestials[i] = new NullCelestial();
+
+        return;
+      }
+    }
+  };
+
+  // Turn celestial into lots of small bits
+  fragmentize(celestial) {
+    // Destroy really small celestials
+    if (celestial.r < 5) { this.destroy(celestial); return; }
+
+    var numFrags = random(5) + 2;
+
+    // Copy celestial
+    var celestialModel = jQuery.extend(true, {}, celestial);
+    celestialModel.color = color(255, 0, 255);
+
+    // Destroy original celestial
+    this.destroy(celestial);
+
+    // Generate fragments
+    for (var i = 0; i < numFrags; i++) {
+      // Deep copy of original
+      var fragmentCelestial = jQuery.extend(true, {}, celestialModel);
+      // Modify
+      fragmentCelestial.r = celestialModel.r / numFrags;
+      fragmentCelestial.x += random(2) + 1;
+      fragmentCelestial.y += random(2) + 1;
+      // Initiate
+      this.celestials.push(fragmentCelestial);
+    }
+
+
+
+    // Play sound
+    fragmentizeSound.play();
+  };
+
+  // Given two masses, compute the acceleration of the first.
+  getPairAcc(celestialA, celestialB) {
+    // Distance apart
     var diffX = celestialA.x - celestialB.x;
     var diffY = celestialA.y - celestialB.y;
+    var d = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
 
-    // Angle with respect to planetA.
+    // Angle with respect to first param
     var theta = Math.atan(diffY/diffX) + Math.PI;
     if (diffX < 0) { theta += Math.PI; }
     else if (diffY < 0) { theta += 2 * Math.PI; }
 
-    // Display push animation
-    fill(color(200, 100, 250));
-    ellipse(celestialB.x + (10 * Math.cos(theta)), celestialB.y + (10 * Math.sin(theta)), celestialB.r*2, celestialB.r*2);
+    // Planet acceleration
+    var acc = this.G * celestialB.mass / Math.pow(d, 2);
+    var accX = acc * Math.cos(theta);
+    var accY = acc * Math.sin(theta);
 
-    // Push two celestials apart
-    var repulsiveForce = (celestialB.mass / Math.pow(10, 7));
-    celestialB.velX += repulsiveForce * Math.cos(theta);
-    celestialB.velY += repulsiveForce * Math.sin(theta);
+    // Planet force!
+    var force = acc * celestialA.mass;
 
-    // According to this angle, push out planetA +5 the planetDist, using trig!
-    // var pushDist = planetB.r;
-    // planetB.x += pushDist * cos(theta);
-    // planetB.y += pushDist * sin(theta);
+    // Get type of collision (including "no colision")
+    var collisionReport = this.collisionHandler(celestialA, celestialB);
 
-    // Elastic collision, momentum conserved
-    //planetA.velX = (planetA.velX * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velX) / (planetA.mass + planetB.mass);
-    //planetA.velY = (planetA.velY * (planetA.mass - planetB.mass) + 2 * planetB.mass * planetB.velY) / (planetA.mass + planetB.mass);
+    if (collisionReport === 1) { // Planet collision
 
-    // Planet collision
-    return 1;
-  }
+    } else if (collisionReport === 2) { // Boundary collision
+      // Remove planets not in the canvas scope
+      if (!(celestialA instanceof Spaceship)) { this.destroy(celestialA); }
+      // Display spaceship boundary indicators
+      else {
+        // Position of indicator
+        var xIndicator, yIndicator;
+        // Width and height of indicator
+        var wIndicator, hIndicator;
 
-  // No collision
-  return 0;
-}
-this.debugLog = function() {
-  for (var i = 0; i < this.celestials.length; i++)
-  {
-    print(this.celestials[i].name + "\t");
-  }
-  print("\n--------------------------\n");
+        // Y indicator location
+        if (celestialA.y > CANVAS_HEIGHT) {
+          yIndicator = CANVAS_HEIGHT;
+          // Make width proportional to distance off screen
+          wIndicator = Math.abs(CANVAS_HEIGHT - celestialA.y);
+        } else if (celestialA.y < 0) {
+          yIndicator = 0;
+          wIndicator = Math.abs(0 - celestialA.y);
+        } else {
+          yIndicator = celestialA.y;
+          wIndicator = 10;
+        }
 
-  return;
-};
-// Remove celestial from universe
-this.destroy = function(celestial) {
-  // Don't destroy spaceship or star
-  if (celestial instanceof Spaceship || celestial instanceof Star) { return; }
-  // Search for celestial to destroy
-  for (var i = 0; i < this.celestials.length; i++)
-  {
-    if (this.celestials[i] === celestial) {
-      celestial.color = color(0, 255, 0);
-      // TODO Fix error with splicing
-      //this.celestials.splice(i, 1);
-      // Have celestial handle destruction cleanup
-      this.celestials[i].destroy();
-      // For now, we just nullify the celestial
-      this.celestials[i] = new NullCelestial();
+        // X indicator location
+        if (celestialA.x > CANVAS_WIDTH) {
+          xIndicator = CANVAS_WIDTH;
+          hIndicator = Math.abs(CANVAS_WIDTH - celestialA.x);
+        } else if (celestialA.x < 0) {
+          xIndicator = 0;
+          hIndicator = Math.abs(0 - celestialA.x);
+        } else {
+          xIndicator = celestialA.x;
+          hIndicator = 10;
+        }
 
-      return;
-    }
-  }
-};
-// Turn celestial into lots of small bits
-this.fragmentize = function(celestial) {
-  // Destroy really small celestials
-  if (celestial.r < 5) { this.destroy(celestial); return; }
+        // TODO Fix edge cases
 
-  var numFrags = random(5) + 2;
-
-  // Copy celestial
-  var celestialModel = jQuery.extend(true, {}, celestial);
-  celestialModel.color = color(255, 0, 255);
-
-  // Destroy original celestial
-  this.destroy(celestial);
-
-  // Generate fragments
-  for (var i = 0; i < numFrags; i++) {
-    // Deep copy of original
-    var fragmentCelestial = jQuery.extend(true, {}, celestialModel);
-    // Modify
-    fragmentCelestial.r = celestialModel.r / numFrags;
-    fragmentCelestial.x += random(2) + 1;
-    fragmentCelestial.y += random(2) + 1;
-    // Initiate
-    this.celestials.push(fragmentCelestial);
-  }
-
-
-
-  // Play sound
-  fragmentizeSound.play();
-};
-// Given two masses, compute the acceleration of the first.
-this.getPairAcc = function(celestialA, celestialB) {
-  // Distance apart
-  var diffX = celestialA.x - celestialB.x;
-  var diffY = celestialA.y - celestialB.y;
-  var d = Math.sqrt(Math.pow(diffX, 2) + Math.pow(diffY, 2));
-
-  // Angle with respect to first param
-  var theta = Math.atan(diffY/diffX) + Math.PI;
-  if (diffX < 0) { theta += Math.PI; }
-  else if (diffY < 0) { theta += 2 * Math.PI; }
-
-  // Planet acceleration
-  var acc = this.G * celestialB.mass / Math.pow(d, 2);
-  var accX = acc * Math.cos(theta);
-  var accY = acc * Math.sin(theta);
-
-  // Planet force!
-  var force = acc * celestialA.mass;
-
-  // Get type of collision (including "no colision")
-  var collisionReport = this.collisionHandler(celestialA, celestialB);
-  if (collisionReport === 1) { // Planet collision
-
-  } else if (collisionReport === 2) { // Boundary collision
-    // Remove planets not in the canvas scope
-    if (!(celestialA instanceof Spaceship)) { this.destroy(celestialA); }
-    // Display spaceship boundary indicators
-    else {
-      // Position of indicator
-      var xIndicator, yIndicator;
-      // Width and height of indicator
-      var wIndicator, hIndicator;
-
-      // Y indicator location
-      if (celestialA.y > CANVAS_HEIGHT) {
-        yIndicator = CANVAS_HEIGHT;
-        // Make width proportional to distance off screen
-        wIndicator = Math.abs(CANVAS_HEIGHT - celestialA.y);
-      } else if (celestialA.y < 0) {
-        yIndicator = 0;
-        wIndicator = Math.abs(0 - celestialA.y);
-      } else {
-        yIndicator = celestialA.y;
-        wIndicator = 10;
+        // Display indicator
+        fill(color(255, (50 - 0), (50 - 0)));
+        rect(xIndicator - (wIndicator / 2), yIndicator - (hIndicator / 2), wIndicator, hIndicator);
       }
+    } else if (collisionReport === 3) { // Explosive collision
+      // Visual debugging
+      fill(color(100, 50, 20));
+      ellipse(celestialA.x, celestialA.y, celestialA.r*4, celestialA.r*4);
 
-      // X indicator location
-      if (celestialA.x > CANVAS_WIDTH) {
-        xIndicator = CANVAS_WIDTH;
-        hIndicator = Math.abs(CANVAS_WIDTH - celestialA.x);
-      } else if (celestialA.x < 0) {
-        xIndicator = 0;
-        hIndicator = Math.abs(0 - celestialA.x);
-      } else {
-        xIndicator = celestialA.x;
-        hIndicator = 10;
+      // Destroy celestialA (missile)
+      this.destroy(celestialA);
+
+      // Breakup celestialB (collided planet) into randomized fragments
+      this.fragmentize(celestialB);
+
+      // Display explosion animation
+      fill(color(180, 70, 70));
+      var explRad = random(100);
+      ellipse(celestialA.x, celestialA.y, explRad, explRad);
+
+    } else if (collisionReport == 4) { // Star collision
+      // Destroy celestialB (celestial)
+      this.destroy(celestialB);
+
+      // Grow sun... for fun
+      celestialA.r++;
+    }
+
+    // Display weighted gravity web, if mode is on
+    if (gravityDisplayMode == true) {
+      // Line between weighted with magnitude of force
+      stroke(230, 230, 230);
+      strokeWeight(Math.pow(force, 1/4));
+      line(celestialA.x, celestialA.y, celestialB.x, celestialB.y);
+
+      // Reset stroke
+      stroke(255, 255, 255);
+      strokeWeight(1);
+    }
+
+    return [accX, accY];
+  }
+  // Get net x and y accelerations of planet
+  // with respect to universe cog and other planets.
+
+  // TODO: Fix [NaN, NaN] being returned from here
+
+  getNetAcc(celestialIndex) {
+    var netAcc = [0, 0];
+    var celestial = this.celestials[celestialIndex];
+
+    // Skip nulls
+    if (celestial instanceof NullCelestial) { return; }
+
+    // Add planets to net acceleration
+    for (var j = 0; j < this.celestials.length; j++) {
+      if (j !== celestialIndex) {
+        var otherCelestial = this.celestials[j];
+
+        if (otherCelestial instanceof NullCelestial) { continue; }
+
+        var acc = this.getPairAcc(celestial, otherCelestial);
+
+        netAcc[0] += acc[0];
+        netAcc[1] += acc[1];
       }
-
-      // TODO Fix edge cases
-
-      // Display indicator
-      fill(color(255, (50 - 0), (50 - 0)));
-      rect(xIndicator - (wIndicator / 2), yIndicator - (hIndicator / 2), wIndicator, hIndicator);
     }
-  } else if (collisionReport === 3) { // Explosive collision
-    // Visual debugging
-    fill(color(100, 50, 20));
-    ellipse(celestialA.x, celestialA.y, celestialA.r*4, celestialA.r*4);
 
-    // Destroy celestialA (missile)
-    this.destroy(celestialA);
-
-    // Breakup celestialB (collided planet) into randomized fragments
-    this.fragmentize(celestialB);
-
-    // Display explosion animation
-    fill(color(180, 70, 70));
-    var explRad = random(100);
-    ellipse(celestialA.x, celestialA.y, explRad, explRad);
-
-  } else if (collisionReport == 4) { // Star collision
-    // Destroy celestialB (celestial)
-    this.destroy(celestialB);
-
-    // Grow sun... for fun
-    celestialA.r++;
+    return netAcc;
   }
-
-  // Display weighted gravity web, if mode is on
-  if (gravityDisplayMode == true) {
-    // Line between weighted with magnitude of force
-    stroke(230, 230, 230);
-    strokeWeight(Math.pow(force, 1/4));
-    line(celestialA.x, celestialA.y, celestialB.x, celestialB.y);
-
-    // Reset stroke
-    stroke(255, 255, 255);
-    strokeWeight(1);
-  }
-
-  return [accX, accY];
-}
-// Get net x and y accelerations of planet
-// with respect to universe cog and other planets.
-this.getNetAcc = function(celestialIndex) {
-  var netAcc = [0, 0];
-  var celestial = this.celestials[celestialIndex];
-
-  // Skip nulls
-  if (celestial instanceof NullCelestial) { return; }
-
-  // Add planets to net acceleration
-  for (j = 0; j < this.celestials.length; j++) {
-    if (j !== celestialIndex) {
-      var otherCelestial = this.celestials[j];
-
-      if (otherCelestial instanceof NullCelestial) { continue; }
-
-      var acc = this.getPairAcc(celestial, otherCelestial);
-      netAcc[0] += acc[0];
-      netAcc[1] += acc[1];
+  // Create random background of stars
+  generateBackground() {
+    // Spawn 10 to 30 stars
+    for (var i = 0; i < (random(20) + 10); i++) {
+      var randPos = this.getRandomPosition();
+      var randRad = random(2) + 1;
+      this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
     }
   }
 
-  return netAcc;
-}
-// Create random background of stars
-this.generateBackground = function() {
-  // Spawn 10 to 30 stars
-  for (var i = 0; i < (random(20) + 10); i++) {
-    var randPos = this.getRandomPosition();
-    var randRad = random(2) + 1;
-    this.backgroundStars.push(new Star(randPos[0], randPos[1], randRad, 0, 0, 0, (BG_COLOR + 10)));
-  }
-}
-// Render frame in universe
-this.move = function() {
-  // Render background stars
-  for (var i = 0; i < this.backgroundStars.length; i++) {
-    this.backgroundStars[i].display();
-  }
+  // Render frame in universe
+  move() {
+    // Render background stars
+    for (var i = 0; i < this.backgroundStars.length; i++) {
+      this.backgroundStars[i].display();
+    }
 
-  // Log stuff
-  //this.debugLog();
+    // Log stuff
+    //this.debugLog();
 
-  var spaceship = this.celestials[0];
-  var spaceshipNetAcc = this.getNetAcc(0);
-  // Update spaceship's awareness of other celestials
-  spaceship.celestials = this.celestials.slice(1, this.celestials.length);
+    //var spaceship = this.celestials[0];
+    //var spaceshipNetAcc = this.getNetAcc(0);
+    // Update spaceship's awareness of other celestials
+    //spaceship.celestials = this.celestials.slice(1, this.celestials.length);
 
-  /*
-     fill(255, 0, 0);
-     stroke(255, 0, 0);
-     strokeWeight(5);
+    /*
+       fill(255, 0, 0);
+       stroke(255, 0, 0);
+       strokeWeight(5);
 
-  // Weighted masses
-  var sumMass = 0, iGravityX = 0, iGravityY = 0;
+    // Weighted masses
+    var sumMass = 0, iGravityX = 0, iGravityY = 0;
 
-  for (var i = 0; i < this.celestials.length; i++) {
-  var cel = this.celestials[i];
-  sumMass += cel.mass;
-  }
+    for (var i = 0; i < this.celestials.length; i++) {
+    var cel = this.celestials[i];
+    sumMass += cel.mass;
+    }
 
-  for (var i = 0; i < this.celestials.length; i++) {
-  var cel = this.celestials[i];
-  iGravityX += (cel.mass / sumMass) * cel.x;
-  iGravityY += (cel.mass / sumMass) * cel.y;
-  }
+    for (var i = 0; i < this.celestials.length; i++) {
+    var cel = this.celestials[i];
+    iGravityX += (cel.mass / sumMass) * cel.x;
+    iGravityY += (cel.mass / sumMass) * cel.y;
+    }
 
-  ellipse(iX, iY, 20, 20);
-  line(spaceship.x, spaceship.y, iGravityX, iGravityY);
-  fill(0, 0, 255);
-  stroke(0, 0, 255);
+    ellipse(iX, iY, 20, 20);
+    line(spaceship.x, spaceship.y, iGravityX, iGravityY);
+    fill(0, 0, 255);
+    stroke(0, 0, 255);
 
-  var accX = spaceshipNetAcc[0];
-  var accY = spaceshipNetAcc[1];
-  var forceX = spaceship.mass * accX;
-  var forceY = spaceship.mass * accY;
+    var accX = spaceshipNetAcc[0];
+    var accY = spaceshipNetAcc[1];
+    var forceX = spaceship.mass * accX;
+    var forceY = spaceship.mass * accY;
 
-  var iX = spaceship.x + forceX;
-  var iY = spaceship.y + forceY;
+    var iX = spaceship.x + forceX;
+    var iY = spaceship.y + forceY;
 
-  ellipse(iX, iY, 20, 20);
-  line(spaceship.x, spaceship.y, iX, iY);
+    ellipse(iX, iY, 20, 20);
+    line(spaceship.x, spaceship.y, iX, iY);
 
-  noStroke();
-  fill(255, 102, 0);
+    noStroke();
+    fill(255, 102, 0);
 
-  // Example 1
-  var nextX = spaceship.x;
-  var nextY = spaceship.y;
-  var nextVelX = spaceship.velX;
-  var nextVelY = spaceship.velY;
-  for (var i = 0; i <= 100; i++) {
-  // Projected velecity for given frame i
-  nextVelX += accX*2;
-  nextVelY += accY*2;
+    // Example 1
+    var nextX = spaceship.x;
+    var nextY = spaceship.y;
+    var nextVelX = spaceship.velX;
+    var nextVelY = spaceship.velY;
+    for (var i = 0; i <= 100; i++) {
+    // Projected velecity for given frame i
+    nextVelX += accX*2;
+    nextVelY += accY*2;
 
-  // Projected position
-  nextX += nextVelX;
-  nextY += nextVelY;
+    // Projected position
+    nextX += nextVelX;
+    nextY += nextVelY;
 
-  if ((i % (100 / 10)) == 0) {
-  ellipse(nextX, nextY, spaceship.r/2, spaceship.r/2);
-  }
-  else {
-  ellipse(nextX, nextY, spaceship.r/4, spaceship.r/4);
-  }
-  }
-
-  // Example 2
-  nextX = spaceship.x;
-  nextY = spaceship.y;
-  nextVelX = spaceship.velX;
-  nextVelY = spaceship.velY;
-  for (var i = 0; i <= 100; i++) {
-  // Projected velecity for given frame i
-  nextVelX += accX*2;
-  nextVelY += accY*2;
-
-  // Projected position
-  nextX += nextVelX;
-  nextY += nextVelY;
-
-  if ((i % (100 / 10)) == 0) {
+    if ((i % (100 / 10)) == 0) {
     ellipse(nextX, nextY, spaceship.r/2, spaceship.r/2);
-  }
-  else {
+    }
+    else {
     ellipse(nextX, nextY, spaceship.r/4, spaceship.r/4);
+    }
+    }
+
+    // Example 2
+    nextX = spaceship.x;
+    nextY = spaceship.y;
+    nextVelX = spaceship.velX;
+    nextVelY = spaceship.velY;
+    for (var i = 0; i <= 100; i++) {
+    // Projected velecity for given frame i
+    nextVelX += accX*2;
+    nextVelY += accY*2;
+
+    // Projected position
+    nextX += nextVelX;
+    nextY += nextVelY;
+
+    if ((i % (100 / 10)) == 0) {
+      ellipse(nextX, nextY, spaceship.r/2, spaceship.r/2);
+    }
+    else {
+      ellipse(nextX, nextY, spaceship.r/4, spaceship.r/4);
+    }
   }
-}
 
-*/
-// Mission stuff
-this.targetPlanet = this.getRandomPlanet();
+  */
+  // Mission stuff
+  //this.targetPlanet = this.getRandomPlanet();
 
-// Handle shooting
-if (spaceKeyDown == true) {
-  spaceship.fire();
-}
-// Handle spaceship thrust
-if (upKeyDown == true && downKeyDown == false) {
-  spaceship.thrustUp();
-}
-if (downKeyDown == true && upKeyDown == false) {
-  spaceship.thrustDown();
-}
-if (leftKeyDown == true && rightKeyDown == false) {
-  spaceship.thrustLeft();
-}
-if (rightKeyDown == true && leftKeyDown == false) {
-  spaceship.thrustRight();
-}
+  // Handle shooting
+  if (spaceKeyDown == true) {
+    spaceship.fire();
+  }
+  // Handle spaceship thrust
+  if (upKeyDown == true && downKeyDown == false) {
+    spaceship.thrustUp();
+  }
+  if (downKeyDown == true && upKeyDown == false) {
+    spaceship.thrustDown();
+  }
+  if (leftKeyDown == true && rightKeyDown == false) {
+    spaceship.thrustLeft();
+  }
+  if (rightKeyDown == true && leftKeyDown == false) {
+    spaceship.thrustRight();
+  }
 
-// Render spaceship
-spaceship.move(spaceshipNetAcc);
-spaceship.display();
+  // Render spaceship
+  // TODO: Uncomment
+  //spaceship.move(spaceshipNetAcc);
+  //spaceship.display();
 
-// Project course
-var velPullX = (spaceship.x + spaceship.velX) * 1;
-var velPullY = (spaceship.y + spaceship.velY) * 1;
-var forcePullX = spaceship.x + spaceshipNetAcc[0];
-var forcePullY = spaceship.y + spaceshipNetAcc[1];
 
-// stroke(255, 102, 0);
-//bezier(spaceship.x, spaceship.y, velPullX, velPullY, velPullX, velPullY, forcePullX, forcePullY);
-// curve(spaceship.x, spaceship.y, velPullX/2, velPullY/2, velPullX*3/4, velPullY*3/4, forcePullX, forcePullY);
+  // Project course
+  //var velPullX = (spaceship.x + spaceship.velX) * 1;
+  //var velPullY = (spaceship.y + spaceship.velY) * 1;
+  //var forcePullX = spaceship.x + spaceshipNetAcc[0];
+  //var forcePullY = spaceship.y + spaceshipNetAcc[1];
 
-// DEBUG
-// fill(0, 255, 0);
-// line(spaceship.x, spaceship.y, forcePullX, forcePullY);
-// fill(255, 0, 0);
-// line(spaceship.x, spaceship.y, velPullX, velPullY);
+  // stroke(255, 102, 0);
+  //bezier(spaceship.x, spaceship.y, velPullX, velPullY, velPullX, velPullY, forcePullX, forcePullY);
+  // curve(spaceship.x, spaceship.y, velPullX/2, velPullY/2, velPullX*3/4, velPullY*3/4, forcePullX, forcePullY);
 
-//bezier(planet.x, planet.y, otherPlanet.x, otherPlanet.y, 80);
-// fill(0);
-// int steps = 30;
-// for (int i = 0; i <= steps; i++) {
-// float t = i / float(steps);
-// float x = bezierPoint(planet.x, 0, otherPlanet.x, 0, t);
-// float y = bezierPoint(planet.y, 0, otherPlanet.y, 0, t);
-// ellipse(x, y, 5, 5);
-//
+  // DEBUG
+  // fill(0, 255, 0);
+  // line(spaceship.x, spaceship.y, forcePullX, forcePullY);
+  // fill(255, 0, 0);
+  // line(spaceship.x, spaceship.y, velPullX, velPullY);
 
-// Render all celestials
-for (i = 1; i < this.celestials.length; i++) {
-  var celestial = this.celestials[i];
-  // TODO Update to getNetAcc(celestial)
-  var planetNetAcc = this.getNetAcc(i);
-  celestial.move(planetNetAcc);
-  celestial.display();
-}
+  //bezier(planet.x, planet.y, otherPlanet.x, otherPlanet.y, 80);
+  // fill(0);
+  // int steps = 30;
+  // for (int i = 0; i <= steps; i++) {
+  // float t = i / float(steps);
+  // float x = bezierPoint(planet.x, 0, otherPlanet.x, 0, t);
+  // float y = bezierPoint(planet.y, 0, otherPlanet.y, 0, t);
+  // ellipse(x, y, 5, 5);
+  //
 
-// TODO replace with legit end planet
-var startPlanet = this.celestials[0];
-var endPlanet = this.celestials[this.celestials.length - 1];
+  // Render all celestials
+  for (i = 1; i < this.celestials.length; i++) {
+    var celestial = this.celestials[i];
+    // TODO Update to getNetAcc(celestial)
+    var planetNetAcc = this.getNetAcc(i);
+    celestial.move(planetNetAcc);
+    celestial.display();
 
-// Update stats in HTML console
-/*
-   var ss = this.celestials[0];
-   text("(" + Math.round(ss.x) + ", " + Math.round(ss.y) + ")");
-   $("#statistics #velocity").text(ss.getVelocity());
-   $("#statistics #time").text(jQuery.now());
+    //alert(celestial.name);
+  }
 
-   updateMissleDisplay(ss.missleCount);
-   updateFuelDisplay(ss.getFuelPercentage());
- */
+  // TODO replace with legit end planet
+  var startPlanet = this.celestials[0];
+  var endPlanet = this.celestials[this.celestials.length - 1];
 
-//$("#statistics #fuel").text(ss.getFuelPercentage());
-};
-this.display = function() {
-  // TODO
-}
+  // Update stats in HTML console
+  /*
+     var ss = this.celestials[0];
+     text("(" + Math.round(ss.x) + ", " + Math.round(ss.y) + ")");
+     $("#statistics #velocity").text(ss.getVelocity());
+     $("#statistics #time").text(jQuery.now());
 
-// Add spaceship
-this.addSpaceship();
-// Add friends
-for (var i = 0; i < 10; i++) {
-  this.addFriend();
-}
-// Generate unique background of stars
-this.generateBackground();
-// Add stars
-for (var i = 0; i < this.numStars; i++) {
-  this.addStar();
-}
-// Add planets
-for (var i = 0; i < this.numPlanets; i++) {
-  this.addPlanet();
-}
-// Add asteroids
-for (var i = 0; i < this.numAsteroids; i++) {
-  this.addAsteroid();
-}
+     updateMissleDisplay(ss.missleCount);
+     updateFuelDisplay(ss.getFuelPercentage());
+   */
+
+  //$("#statistics #fuel").text(ss.getFuelPercentage());
+  }
+
+  display() {
+    // TODO
+  } 
 }
 
 
@@ -1562,6 +1513,9 @@ function Console(simulation) {
 
   // Spaceship info
   this.showStats = function() {
+    
+    return;
+
     var stats = this.simulation.getStats();
     var fontHeight = 30;
     var fontWidth = fontHeight / 2; // NOTE Estimate
@@ -1644,51 +1598,51 @@ function Console(simulation) {
 }
 
 /* HANDLE USER CONTROLS 
-$("body").keydown(function(event) {
-    var aKey = event["keyCode"];
-    //window.alert(aKey);
-    // Spacebar and arrows
-    if (aKey == 32) {
-    spaceKeyDown = true;
-    } else if (aKey == 37) {
-    leftKeyDown = true;
-    } else if (aKey == 38) {
-    upKeyDown = true;
-    } else if (aKey == 39) {
-    rightKeyDown = true;
-    } else if (aKey == 40) {
-    downKeyDown = true;
-    } else {
-    // Stop animating
-    noLoop();
+   $("body").keydown(function(event) {
+   var aKey = event["keyCode"];
+//window.alert(aKey);
+// Spacebar and arrows
+if (aKey == 32) {
+spaceKeyDown = true;
+} else if (aKey == 37) {
+leftKeyDown = true;
+} else if (aKey == 38) {
+upKeyDown = true;
+} else if (aKey == 39) {
+rightKeyDown = true;
+} else if (aKey == 40) {
+downKeyDown = true;
+} else {
+// Stop animating
+noLoop();
 
-    // Show pause
-    textSize(200);
-    fill(255);
-    text("||", 10, 170);
+// Show pause
+textSize(200);
+fill(255);
+text("||", 10, 170);
 
-    // Stop music
-    backgroundMusic.pause();
-    }
+// Stop music
+backgroundMusic.pause();
+}
 });
 $("body").keyup(function(event) {
-    var aKey = event["keyCode"];
-    if (aKey == 32) {
-    spaceKeyDown = false;
-    } else if (aKey == 37) {
-    leftKeyDown = false;
-    } else if (aKey == 38) {
-    upKeyDown = false;
-    } else if (aKey == 39) {
-    rightKeyDown = false;
-    } else if (aKey == 40) {
-    downKeyDown = false;
-    } else {
-    loop();
-    backgroundMusic.play();
-    }
-    });
-*/
+var aKey = event["keyCode"];
+if (aKey == 32) {
+spaceKeyDown = false;
+} else if (aKey == 37) {
+leftKeyDown = false;
+} else if (aKey == 38) {
+upKeyDown = false;
+} else if (aKey == 39) {
+rightKeyDown = false;
+} else if (aKey == 40) {
+downKeyDown = false;
+} else {
+loop();
+backgroundMusic.play();
+}
+});
+ */
 
 
 // Add new planet on mouse click
